@@ -175,6 +175,11 @@ export default function AlgorithmVisualizer({
   
   // Step forward manually
   const stepForward = () => {
+    // Prevent manual step if auto-playing
+    if (isPlaying && !isPaused) {
+      console.warn("Attempted manual stepForward while auto-playing.");
+      return;
+    }
     if (currentStep < steps.length - 1) {
       setCurrentStep(prev => prev + 1);
     }

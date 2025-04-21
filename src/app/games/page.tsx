@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from 'react';
-import React from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import AlgorithmVisualizer from '../components/AlgorithmVisualizer';
 import { addXP } from '../utils/storage';
@@ -19,11 +18,57 @@ interface CodeSnippet {
 
 export default function GamesPage() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
-  const [gameCompleted, setGameCompleted] = useState<Record<string, boolean>>({});
+  const [gameCompleted, setGameCompleted] = useState<{[key: string]: boolean}>({});
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [algorithmStep, setAlgorithmStep] = useState<string>('');
   const [lineHighlights, setLineHighlights] = useState<{[key: number]: boolean}>({});
+  
+  // Memoize initialData objects
+  const sortRaceData = useMemo(() => [38, 27, 43, 3, 9, 82, 10, 57, 29, 17], []);
+  const binarySearchData = useMemo(() => ({ array: [3, 7, 11, 15, 19, 25, 36, 42, 51, 68, 74, 83, 99], target: 42 }), []);
+  const dpChallengeData = useMemo(() => [0, 1, 1, 2, 3, 5, 8, 13, 21, 34], []);
+  const greedyAlgoData = useMemo(() => ({ coins: [1, 5, 10, 25], amount: 63 }), []);
+  const bitwiseOpsData = useMemo(() => ({
+    operations: [
+      { name: 'AND', left: 0b10101010, right: 0b11001100, result: 0b10001000 },
+      { name: 'OR', left: 0b10101010, right: 0b11001100, result: 0b11101110 },
+      { name: 'XOR', left: 0b10101010, right: 0b11001100, result: 0b01100110 },
+      { name: 'NOT', value: 0b10101010, result: 0b01010101 },
+      { name: 'LEFT SHIFT', value: 0b00001111, shift: 2, result: 0b00111100 },
+      { name: 'RIGHT SHIFT', value: 0b00001111, shift: 1, result: 0b00000111 }
+    ],
+    currentOperation: 0
+  }), []);
+  const bitWizardryData = useMemo(() => ({
+    challenges: [
+      { 
+        name: 'XOR Swap', 
+        a: 25, 
+        b: 42,
+        steps: [
+          { a: 25, b: 42, operation: 'Initial Values' },
+          { a: 25^42, b: 42, operation: 'a ^= b' },
+          { a: 25^42, b: 42^(25^42), operation: 'b ^= a' },
+          { a: (25^42)^(42^(25^42)), b: 42^(25^42), operation: 'a ^= b' }
+        ] 
+      },
+      { 
+        name: 'Power of 2 Check', 
+        value: 64,
+        operation: 'n & (n-1) == 0',
+        result: true 
+      },
+      { 
+        name: 'Isolate Rightmost Bit', 
+        value: 88,
+        operation: 'n & -n',
+        result: 8
+      }
+    ],
+    currentChallenge: 0,
+    currentStep: 0
+  }), []);
   
   // Extended games list with more algorithm concepts
   const games = [
@@ -1058,7 +1103,7 @@ def huffman_encoding(data):
     }
   ];
   
-  const handleGameComplete = (gameId: string) => {
+  const handleGameComplete = useCallback((gameId: string) => {
     if (!gameCompleted[gameId]) {
       // Find the game
       const game = games.find(g => g.id === gameId);
@@ -1072,8 +1117,8 @@ def huffman_encoding(data):
         }));
       }
     }
-  };
-
+  }, [gameCompleted]);
+  
   // Replace the getCurrentCodeSnippet function with this improved version
   // Then update the getCurrentCodeSnippet function to use this type
   const getCurrentCodeSnippet = (gameId: string, stepNum: number): CodeSnippet | null => {
@@ -1165,7 +1210,7 @@ def huffman_encoding(data):
   };
   
   // Handle step change from visualizer
-  const handleStepChange = (step: number, metadata?: any) => {
+  const handleStepChange = useCallback((step: number, metadata?: any) => {
     setCurrentStep(step);
     
     // Update algorithm step name if provided in metadata
@@ -1202,7 +1247,7 @@ def huffman_encoding(data):
         setLineHighlights({});
       }
     }
-  };
+  }, [selectedGame]); // Added useCallback and selectedGame dependency
 
   // Add displayCodeForAlgorithm function to show complete code based on algorithm type
   const displayCodeForAlgorithm = (gameId: string): string => {
@@ -1626,7 +1671,7 @@ def add_one(n):
                     {selectedGame === 'sort-race' && (
                       <AlgorithmVisualizer 
                         type="array-sort"
-                        initialData={[38, 27, 43, 3, 9, 82, 10, 57, 29, 17]}
+                        initialData={sortRaceData} // Use memoized data
                         onComplete={() => handleGameComplete('sort-race')}
                         onStepChange={handleStepChange}
                       />
@@ -1635,7 +1680,7 @@ def add_one(n):
                     {selectedGame === 'binary-search-treasure' && (
                       <AlgorithmVisualizer 
                         type="binary-search"
-                        initialData={{ array: [3, 7, 11, 15, 19, 25, 36, 42, 51, 68, 74, 83, 99], target: 42 }}
+                        initialData={binarySearchData} // Use memoized data
                         onComplete={() => handleGameComplete('binary-search-treasure')}
                         onStepChange={handleStepChange}
                       />
@@ -1644,6 +1689,7 @@ def add_one(n):
                     {selectedGame === 'graph-explorer' && (
                       <AlgorithmVisualizer 
                         type="graph-traversal"
+                        // No initialData needed for default graph
                         onComplete={() => handleGameComplete('graph-explorer')}
                         onStepChange={handleStepChange}
                       />
@@ -1652,6 +1698,7 @@ def add_one(n):
                     {selectedGame === 'linked-list-puzzle' && (
                       <AlgorithmVisualizer 
                         type="linked-list"
+                        // No initialData needed for default list operations
                         onComplete={() => handleGameComplete('linked-list-puzzle')}
                         onStepChange={handleStepChange}
                       />
@@ -1660,6 +1707,7 @@ def add_one(n):
                     {selectedGame === 'tree-balancer' && (
                       <AlgorithmVisualizer 
                         type="tree-traversal"
+                        // No initialData needed for default tree
                         onComplete={() => handleGameComplete('tree-balancer')}
                         onStepChange={handleStepChange}
                       />
@@ -1668,7 +1716,7 @@ def add_one(n):
                     {selectedGame === 'dynamic-programming-challenge' && (
                       <AlgorithmVisualizer 
                         type="dynamic-programming"
-                        initialData={[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}
+                        initialData={dpChallengeData} // Use memoized data
                         onComplete={() => handleGameComplete('dynamic-programming-challenge')}
                         onStepChange={handleStepChange}
                       />
@@ -1677,10 +1725,7 @@ def add_one(n):
                     {selectedGame === 'greedy-algorithms' && (
                       <AlgorithmVisualizer 
                         type="greedy-algorithm"
-                        initialData={{
-                          coins: [1, 5, 10, 25],
-                          amount: 63
-                        }}
+                        initialData={greedyAlgoData} // Use memoized data
                         onComplete={() => handleGameComplete('greedy-algorithms')}
                         onStepChange={handleStepChange}
                       />
@@ -1689,17 +1734,7 @@ def add_one(n):
                     {selectedGame === 'bitwise-operations' && (
                       <AlgorithmVisualizer 
                         type="bit-manipulation"
-                        initialData={{
-                          operations: [
-                            { name: 'AND', left: 0b10101010, right: 0b11001100, result: 0b10001000 },
-                            { name: 'OR', left: 0b10101010, right: 0b11001100, result: 0b11101110 },
-                            { name: 'XOR', left: 0b10101010, right: 0b11001100, result: 0b01100110 },
-                            { name: 'NOT', value: 0b10101010, result: 0b01010101 },
-                            { name: 'LEFT SHIFT', value: 0b00001111, shift: 2, result: 0b00111100 },
-                            { name: 'RIGHT SHIFT', value: 0b00001111, shift: 1, result: 0b00000111 }
-                          ],
-                          currentOperation: 0
-                        }}
+                        initialData={bitwiseOpsData} // Use memoized data
                         onComplete={() => handleGameComplete('bitwise-operations')}
                         onStepChange={handleStepChange}
                       />
@@ -1708,35 +1743,7 @@ def add_one(n):
                     {selectedGame === 'bit-wizardry' && (
                       <AlgorithmVisualizer 
                         type="bit-manipulation-advanced"
-                        initialData={{
-                          challenges: [
-                            { 
-                              name: 'XOR Swap', 
-                              a: 25, 
-                              b: 42,
-                              steps: [
-                                { a: 25, b: 42, operation: 'Initial Values' },
-                                { a: 25^42, b: 42, operation: 'a ^= b' },
-                                { a: 25^42, b: 42^(25^42), operation: 'b ^= a' },
-                                { a: (25^42)^(42^(25^42)), b: 42^(25^42), operation: 'a ^= b' }
-                              ] 
-                            },
-                            { 
-                              name: 'Power of 2 Check', 
-                              value: 64,
-                              operation: 'n & (n-1) == 0',
-                              result: true 
-                            },
-                            { 
-                              name: 'Isolate Rightmost Bit', 
-                              value: 88,
-                              operation: 'n & -n',
-                              result: 8
-                            }
-                          ],
-                          currentChallenge: 0,
-                          currentStep: 0
-                        }}
+                        initialData={bitWizardryData} // Use memoized data
                         onComplete={() => handleGameComplete('bit-wizardry')}
                         onStepChange={handleStepChange}
                       />
@@ -1762,9 +1769,9 @@ def add_one(n):
                       {selectedGame && (
                         <SyntaxHighlighter 
                           language="python"
-                          style={isDarkMode ? vscDarkPlus : vs}
+                          style={isDarkMode ? vscDarkPlus : vs} // Ensure uses local state
                           customStyle={{
-                            background: isDarkMode ? 'rgb(30, 41, 59)' : 'rgb(243, 244, 246)',
+                            background: isDarkMode ? 'rgb(30, 41, 59)' : 'rgb(243, 244, 246)', // Ensure uses local state
                             borderRadius: '0.5rem',
                             padding: '1rem',
                             fontSize: '0.875rem',
@@ -1788,12 +1795,12 @@ def add_one(n):
                               style: { 
                                 display: 'block',
                                 backgroundColor: isHighlighted 
-                                  ? isDarkMode 
+                                  ? isDarkMode // Ensure uses local state
                                     ? 'rgba(45, 212, 191, 0.15)' 
                                     : 'rgba(16, 185, 129, 0.1)' 
                                   : undefined,
                                 borderLeft: isHighlighted 
-                                  ? `4px solid ${isDarkMode ? '#2dd4bf' : '#10b981'}` 
+                                  ? `4px solid ${isDarkMode ? '#2dd4bf' : '#10b981'}` // Ensure uses local state
                                   : undefined,
                                 paddingLeft: isHighlighted ? '0.75rem' : undefined
                               }
