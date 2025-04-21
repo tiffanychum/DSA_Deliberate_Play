@@ -1,0 +1,778 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { trackGameCompletion } from '@/utils/storage';
+import { ArrowLeft, Check, X } from 'lucide-react';
+import Link from 'next/link';
+
+// Define interfaces for the challenge types
+interface BaseBitwiseChallenge {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  xpValue: number;
+}
+
+interface BitwiseCalculationChallenge extends BaseBitwiseChallenge {
+  type: 'calculation';
+  operands: number[];
+  operator: 'AND' | 'OR' | 'XOR' | 'NOT' | 'LEFT_SHIFT' | 'RIGHT_SHIFT';
+  expected: number;
+}
+
+interface BitwiseFlagChallenge extends BaseBitwiseChallenge {
+  type: 'flag';
+  initialValue: number;
+  operations: {
+    type: 'check' | 'set' | 'clear' | 'toggle';
+    position: number;
+    expected?: boolean;
+    resultAfterOp?: number;
+  }[];
+  currentStep?: number;
+}
+
+interface BitwiseXORSwapChallenge extends BaseBitwiseChallenge {
+  type: 'xorswap';
+  valueA: number;
+  valueB: number;
+  step: number;
+  maxSteps: number;
+  valueAHistory: number[];
+  valueBHistory: number[];
+}
+
+type BitwiseChallenge = BitwiseCalculationChallenge | BitwiseFlagChallenge | BitwiseXORSwapChallenge;
+
+const BitwiseOperationSymbols = {
+  AND: '&',
+  OR: '|',
+  XOR: '^',
+  NOT: '~',
+  LEFT_SHIFT: '<<',
+  RIGHT_SHIFT: '>>',
+};
+
+// Helper functions
+const generateDecimalToBinary = (num: number, bits = 8): string => {
+  return (num >>> 0).toString(2).padStart(bits, '0');
+};
+
+const BitWizardryPage: React.FC = () => {
+  const [currentChallenge, setCurrentChallenge] = useState<BitwiseChallenge | null>(null);
+  const [userAnswer, setUserAnswer] = useState<string>('');
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [completedChallenges, setCompletedChallenges] = useState<number[]>([]);
+  const [showAnswer, setShowAnswer] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('challenge');
+  const [currentFlagOperation, setCurrentFlagOperation] = useState<number>(0);
+
+  useEffect(() => {
+    generateChallenge();
+  }, []);
+
+  const generateChallenge = (): void => {
+    // Reset states
+    setUserAnswer('');
+    setIsCorrect(null);
+    setShowAnswer(false);
+    setActiveTab('challenge');
+    setCurrentFlagOperation(0);
+
+    const challengeTypes = ['calculation', 'flag', 'xorswap'];
+    const selectedType = challengeTypes[Math.floor(Math.random() * challengeTypes.length)];
+
+    let newChallenge: BitwiseChallenge;
+
+    switch (selectedType) {
+      case 'calculation':
+        newChallenge = generateCalculationChallenge();
+        break;
+      case 'flag':
+        newChallenge = generateFlagChallenge();
+        break;
+      case 'xorswap':
+        newChallenge = generateXORSwapChallenge();
+        break;
+      default:
+        newChallenge = generateCalculationChallenge();
+    }
+
+    setCurrentChallenge(newChallenge);
+  };
+
+  const generateCalculationChallenge = (): BitwiseCalculationChallenge => {
+    const operators = ['AND', 'OR', 'XOR', 'NOT', 'LEFT_SHIFT', 'RIGHT_SHIFT'] as const;
+    const operator = operators[Math.floor(Math.random() * operators.length)];
+    
+    const operands: number[] = [];
+    let expected: number;
+    
+    // For NOT operation we need only one operand
+    if (operator === 'NOT') {
+      const operand = Math.floor(Math.random() * 256);
+      operands.push(operand);
+      expected = ~operand & 0xff; // Limit to 8 bits
+    } else {
+      // For other operations we need two operands
+      const a = Math.floor(Math.random() * 256);
+      const b = Math.floor(Math.random() * 16); // Use smaller number for shifts
+      operands.push(a, b);
+      
+      switch (operator) {
+        case 'AND': expected = a & b; break;
+        case 'OR': expected = a | b; break;
+        case 'XOR': expected = a ^ b; break;
+        case 'LEFT_SHIFT': expected = (a << b) & 0xff; break; // Limit to 8 bits
+        case 'RIGHT_SHIFT': expected = a >> b; break;
+        default: expected = 0;
+      }
+    }
+
+    return {
+      id: Date.now(),
+      type: 'calculation',
+      title: `Bitwise ${operator}`,
+      description: operator === 'NOT' 
+        ? `Calculate: ${BitwiseOperationSymbols[operator]}${operands[0]}`
+        : `Calculate: ${operands[0]} ${BitwiseOperationSymbols[operator]} ${operands[1]}`,
+      difficulty: 'medium',
+      xpValue: 50,
+      operands,
+      operator,
+      expected
+    };
+  };
+
+  const generateFlagChallenge = (): BitwiseFlagChallenge => {
+    const initialValue = Math.floor(Math.random() * 256);
+    const operations = [];
+    const operationTypes = ['check', 'set', 'clear', 'toggle'];
+    
+    // Generate 3-5 operations
+    const numOperations = Math.floor(Math.random() * 3) + 3;
+    let currentValue = initialValue;
+    
+    for (let i = 0; i < numOperations; i++) {
+      const type = operationTypes[Math.floor(Math.random() * operationTypes.length)] as 'check' | 'set' | 'clear' | 'toggle';
+      const position = Math.floor(Math.random() * 8); // 8-bit positions (0-7)
+      
+      let resultAfterOp = currentValue;
+      let expected: boolean | undefined = undefined;
+      
+      switch (type) {
+        case 'check':
+          expected = Boolean((currentValue >> position) & 1);
+          break;
+        case 'set':
+          resultAfterOp = currentValue | (1 << position);
+          break;
+        case 'clear':
+          resultAfterOp = currentValue & ~(1 << position);
+          break;
+        case 'toggle':
+          resultAfterOp = currentValue ^ (1 << position);
+          break;
+      }
+      
+      operations.push({ type, position, expected, resultAfterOp });
+      currentValue = resultAfterOp;
+    }
+    
+    return {
+      id: Date.now(),
+      type: 'flag',
+      title: 'Bit Flag Operations',
+      description: 'Perform a sequence of bit flag operations',
+      difficulty: 'medium',
+      xpValue: 75,
+      initialValue,
+      operations,
+      currentStep: 0
+    };
+  };
+
+  const generateXORSwapChallenge = (): BitwiseXORSwapChallenge => {
+    const a = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    
+    return {
+      id: Date.now(),
+      type: 'xorswap',
+      title: 'XOR Swap Algorithm',
+      description: 'Swap two values using only XOR operations (no temporary variables)',
+      difficulty: 'hard',
+      xpValue: 100,
+      valueA: a,
+      valueB: b,
+      step: 0,
+      maxSteps: 3,
+      valueAHistory: [a],
+      valueBHistory: [b]
+    };
+  };
+
+  const renderBinaryVisualization = () => {
+    if (!currentChallenge) return null;
+
+    if (currentChallenge.type === 'xorswap') {
+      return (
+        <div className="flex flex-col space-y-4 mt-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="border rounded p-4">
+              <h3 className="font-bold mb-2">Variable A</h3>
+              <div className="text-2xl font-mono">{currentChallenge.valueA}</div>
+              <div className="text-sm font-mono mt-1">{generateDecimalToBinary(currentChallenge.valueA)}</div>
+            </div>
+            <div className="border rounded p-4">
+              <h3 className="font-bold mb-2">Variable B</h3>
+              <div className="text-2xl font-mono">{currentChallenge.valueB}</div>
+              <div className="text-sm font-mono mt-1">{generateDecimalToBinary(currentChallenge.valueB)}</div>
+            </div>
+          </div>
+          <div className="border rounded p-4">
+            <h3 className="font-bold mb-2">Step {currentChallenge.step + 1} of {currentChallenge.maxSteps}</h3>
+            {currentChallenge.step === 0 && <div>A = A ^ B</div>}
+            {currentChallenge.step === 1 && <div>B = A ^ B</div>}
+            {currentChallenge.step === 2 && <div>A = A ^ B</div>}
+            {currentChallenge.step === 3 && (
+              <div className="text-green-600 font-bold">Swap complete!</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (currentChallenge.type === 'calculation') {
+      const { operands, operator } = currentChallenge;
+      return (
+        <div className="space-y-4 mt-4">
+          {operands.map((operand, idx) => (
+            <div key={idx} className="border rounded p-4">
+              <h3 className="font-bold mb-2">Operand {idx + 1}</h3>
+              <div className="text-2xl font-mono">{operand}</div>
+              <div className="text-sm font-mono mt-1">{generateDecimalToBinary(operand)}</div>
+            </div>
+          ))}
+          <div className="border rounded p-4 bg-gray-50">
+            <h3 className="font-bold mb-2">Operation: {operator}</h3>
+            <div className="text-lg font-mono">
+              {operator === 'NOT' ? 
+                `${BitwiseOperationSymbols[operator]}${operands[0]}` : 
+                `${operands[0]} ${BitwiseOperationSymbols[operator]} ${operands[1]}`}
+            </div>
+          </div>
+          {isCorrect === true && (
+            <div className="border rounded p-4 bg-green-50">
+              <h3 className="font-bold mb-2 text-green-700">Result</h3>
+              <div className="text-2xl font-mono">{currentChallenge.expected}</div>
+              <div className="text-sm font-mono mt-1">{generateDecimalToBinary(currentChallenge.expected)}</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (currentChallenge.type === 'flag') {
+      const { initialValue, operations, currentStep } = currentChallenge;
+      const step = currentStep !== undefined ? currentStep : 0;
+      const currentOperation = operations[step];
+      let valueToShow = initialValue;
+      
+      // For display purposes, show the value after previous operations
+      if (step > 0 && operations[step - 1].resultAfterOp !== undefined) {
+        valueToShow = operations[step - 1].resultAfterOp!;
+      }
+      
+      return (
+        <div className="space-y-4 mt-4">
+          <div className="border rounded p-4">
+            <h3 className="font-bold mb-2">Current Value</h3>
+            <div className="text-2xl font-mono">{valueToShow}</div>
+            <div className="grid grid-cols-8 gap-1 mt-2">
+              {generateDecimalToBinary(valueToShow, 8).split('').map((bit, idx) => (
+                <div 
+                  key={idx}
+                  className={`
+                    w-8 h-8 flex items-center justify-center border rounded 
+                    ${currentOperation && currentOperation.position === 7 - idx ? 'bg-blue-100 border-blue-500' : 'bg-gray-50'}
+                  `}
+                >
+                  {bit}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-8 gap-1 mt-1 text-xs text-center">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i}>bit {7 - i}</div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="border rounded p-4 bg-gray-50">
+            <h3 className="font-bold mb-2">Operation {step + 1} of {operations.length}</h3>
+            <div>
+              {currentOperation.type === 'check' && 
+                `Check bit ${currentOperation.position} (is bit ${currentOperation.position} set?)`}
+              {currentOperation.type === 'set' && 
+                `Set bit ${currentOperation.position} (turn it on)`}
+              {currentOperation.type === 'clear' && 
+                `Clear bit ${currentOperation.position} (turn it off)`}
+              {currentOperation.type === 'toggle' && 
+                `Toggle bit ${currentOperation.position} (flip its value)`}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  const checkAnswer = () => {
+    if (!currentChallenge) return;
+
+    let correct = false;
+    
+    if (currentChallenge.type === 'calculation') {
+      const userValue = parseInt(userAnswer, 10);
+      correct = !isNaN(userValue) && userValue === currentChallenge.expected;
+    } 
+    else if (currentChallenge.type === 'flag') {
+      const currentOp = currentChallenge.operations[currentFlagOperation];
+      
+      if (currentOp.type === 'check') {
+        // For check operations, the user answers true or false
+        const userBool = userAnswer.toLowerCase() === 'true' || userAnswer === '1';
+        correct = userBool === currentOp.expected;
+      } else {
+        // For other operations, user calculates the new value
+        const userValue = parseInt(userAnswer, 10);
+        correct = !isNaN(userValue) && userValue === currentOp.resultAfterOp;
+      }
+      
+      // If correct and not the last operation, advance to the next
+      if (correct && currentFlagOperation < currentChallenge.operations.length - 1) {
+        setCurrentFlagOperation(prev => prev + 1);
+        setUserAnswer('');
+        return;
+      }
+    } 
+    else if (currentChallenge.type === 'xorswap') {
+      const userValue = parseInt(userAnswer, 10);
+      let expectedValue = 0;
+      
+      if (currentChallenge.step === 0) {
+        // A = A ^ B
+        expectedValue = currentChallenge.valueA ^ currentChallenge.valueB;
+        if (!isNaN(userValue) && userValue === expectedValue) {
+          const newValueA = expectedValue;
+          setCurrentChallenge({
+            ...currentChallenge,
+            valueA: newValueA,
+            step: 1,
+            valueAHistory: [...currentChallenge.valueAHistory, newValueA]
+          });
+          setUserAnswer('');
+          return;
+        }
+      } 
+      else if (currentChallenge.step === 1) {
+        // B = A ^ B
+        expectedValue = currentChallenge.valueA ^ currentChallenge.valueB;
+        if (!isNaN(userValue) && userValue === expectedValue) {
+          const newValueB = expectedValue;
+          setCurrentChallenge({
+            ...currentChallenge,
+            valueB: newValueB,
+            step: 2,
+            valueBHistory: [...currentChallenge.valueBHistory, newValueB]
+          });
+          setUserAnswer('');
+          return;
+        }
+      } 
+      else if (currentChallenge.step === 2) {
+        // A = A ^ B
+        expectedValue = currentChallenge.valueA ^ currentChallenge.valueB;
+        if (!isNaN(userValue) && userValue === expectedValue) {
+          const newValueA = expectedValue;
+          setCurrentChallenge({
+            ...currentChallenge,
+            valueA: newValueA,
+            step: 3,
+            valueAHistory: [...currentChallenge.valueAHistory, newValueA]
+          });
+          setUserAnswer('');
+          correct = true;
+        }
+      }
+    }
+    
+    setIsCorrect(correct);
+    
+    if (correct) {
+      // Track completion for XP
+      trackGameCompletion('bit-wizardry', currentChallenge.xpValue);
+      setCompletedChallenges(prev => [...prev, currentChallenge.id]);
+    }
+  };
+
+  const nextChallenge = () => {
+    generateChallenge();
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex items-center mb-8">
+        <Link href="/games" className="mr-4">
+          <Button variant="outline" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-3xl font-bold tracking-tight">Bit Wizardry</h1>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>
+                {currentChallenge?.title || 'Bitwise Challenge'}
+              </CardTitle>
+              <Badge>
+                {currentChallenge?.difficulty || 'medium'}
+              </Badge>
+            </div>
+            <CardDescription>
+              {currentChallenge?.description || 'Loading challenge...'}
+            </CardDescription>
+          </CardHeader>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mx-6">
+              <TabsTrigger value="challenge">Challenge</TabsTrigger>
+              <TabsTrigger value="explanation">Explanation</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="challenge">
+              <CardContent>
+                {renderBinaryVisualization()}
+                
+                {!isCorrect && (
+                  <div className="flex items-center gap-4 mt-6">
+                    <Input 
+                      type="text" 
+                      placeholder="Enter your answer" 
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                    />
+                    <Button onClick={checkAnswer}>Submit</Button>
+                  </div>
+                )}
+                
+                {isCorrect !== null && (
+                  <div className={`mt-4 p-4 rounded ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <div className="flex items-center">
+                      {isCorrect ? 
+                        <Check className="h-5 w-5 text-green-600 mr-2" /> : 
+                        <X className="h-5 w-5 text-red-600 mr-2" />
+                      }
+                      <p className={isCorrect ? 'text-green-800' : 'text-red-800'}>
+                        {isCorrect ? 'Correct!' : 'Incorrect. Try again or check the explanation.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </TabsContent>
+            
+            <TabsContent value="explanation">
+              <CardContent>
+                <div className="space-y-4">
+                  {currentChallenge?.type === 'calculation' && (
+                    <>
+                      <h3 className="font-semibold text-lg">Bitwise {currentChallenge.operator} Operation</h3>
+                      <p>The {currentChallenge.operator} operation works by comparing the bits of the operands:</p>
+                      
+                      {currentChallenge.operator === 'AND' && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li>AND (&amp;) returns 1 only if both bits are 1</li>
+                          <li>Used to mask or extract specific bits</li>
+                        </ul>
+                      )}
+                      
+                      {currentChallenge.operator === 'OR' && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li>OR (|) returns 1 if at least one bit is 1</li>
+                          <li>Used to set specific bits</li>
+                        </ul>
+                      )}
+                      
+                      {currentChallenge.operator === 'XOR' && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li>XOR (^) returns 1 if the bits are different</li>
+                          <li>Used for toggling bits or operations like swapping values</li>
+                        </ul>
+                      )}
+                      
+                      {currentChallenge.operator === 'NOT' && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li>NOT (~) inverts all bits (0 becomes 1, 1 becomes 0)</li>
+                          <li>Often used with AND to clear specific bits</li>
+                        </ul>
+                      )}
+                      
+                      {currentChallenge.operator === 'LEFT_SHIFT' && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li>LEFT SHIFT (&lt;&lt;) moves bits to the left, filling with 0s</li>
+                          <li>Equivalent to multiplying by 2 for each shift position</li>
+                        </ul>
+                      )}
+                      
+                      {currentChallenge.operator === 'RIGHT_SHIFT' && (
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li>RIGHT SHIFT (&gt;&gt;) moves bits to the right</li>
+                          <li>Equivalent to integer division by 2 for each shift position</li>
+                        </ul>
+                      )}
+                      
+                      <div className="mt-4">
+                        <Button onClick={() => setShowAnswer(!showAnswer)}>
+                          {showAnswer ? 'Hide Answer' : 'Show Answer'}
+                        </Button>
+                        
+                        {showAnswer && (
+                          <div className="mt-4 p-4 border rounded">
+                            <p className="font-semibold">Answer: {currentChallenge.expected}</p>
+                            <p className="font-mono text-sm mt-1">
+                              Binary: {generateDecimalToBinary(currentChallenge.expected)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  
+                  {currentChallenge?.type === 'flag' && (
+                    <>
+                      <h3 className="font-semibold text-lg">Bit Flag Operations</h3>
+                      <p>Bit flags allow you to store multiple boolean values in a single number.</p>
+                      
+                      <div className="space-y-2">
+                        <p className="font-semibold">Common bit flag operations:</p>
+                        <ul className="list-disc pl-5 space-y-2">
+                          <li><span className="font-mono">CHECK</span>: <span className="font-mono">(value &gt;&gt; position) &amp; 1</span> - Returns 1 if the bit is set, 0 otherwise</li>
+                          <li><span className="font-mono">SET</span>: <span className="font-mono">value | (1 &lt;&lt; position)</span> - Turns the bit ON</li>
+                          <li><span className="font-mono">CLEAR</span>: <span className="font-mono">value &amp; ~(1 &lt;&lt; position)</span> - Turns the bit OFF</li>
+                          <li><span className="font-mono">TOGGLE</span>: <span className="font-mono">value ^ (1 &lt;&lt; position)</span> - Flips the bit from 0 to 1 or 1 to 0</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="mt-4">
+                        <Button onClick={() => setShowAnswer(!showAnswer)}>
+                          {showAnswer ? 'Hide Answer' : 'Show Answer'}
+                        </Button>
+                        
+                        {showAnswer && (
+                          <div className="mt-4 p-4 border rounded">
+                            {currentChallenge.operations[currentFlagOperation].type === 'check' ? (
+                              <p className="font-semibold">
+                                Answer: {currentChallenge.operations[currentFlagOperation].expected ? 'true' : 'false'}
+                              </p>
+                            ) : (
+                              <p className="font-semibold">
+                                Answer: {currentChallenge.operations[currentFlagOperation].resultAfterOp}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  
+                  {currentChallenge?.type === 'xorswap' && (
+                    <>
+                      <h3 className="font-semibold text-lg">XOR Swap Algorithm</h3>
+                      <p>The XOR swap algorithm allows swapping two values without using a temporary variable:</p>
+                      
+                      <div className="space-y-2 font-mono bg-gray-50 p-4 rounded">
+                        <p>// Given two variables a and b</p>
+                        <p>a = a ^ b</p>
+                        <p>b = a ^ b</p>
+                        <p>a = a ^ b</p>
+                      </div>
+                      
+                      <p className="mt-4">The algorithm works because:</p>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li>After the first line, <span className="font-mono">a</span> holds <span className="font-mono">a^b</span></li>
+                        <li>After the second, <span className="font-mono">b = (a^b)^b = a^(b^b) = a^0 = a</span></li>
+                        <li>After the third, <span className="font-mono">a = (a^b)^a = (a^b)^a = b^(a^a) = b^0 = b</span></li>
+                      </ul>
+                      
+                      <div className="mt-4">
+                        <Button onClick={() => setShowAnswer(!showAnswer)}>
+                          {showAnswer ? 'Hide Steps' : 'Show Steps'}
+                        </Button>
+                        
+                        {showAnswer && (
+                          <div className="mt-4 p-4 border rounded space-y-2">
+                            <p className="font-semibold">Step 1: a = a ^ b</p>
+                            <p>a = {currentChallenge.valueAHistory[0]} ^ {currentChallenge.valueBHistory[0]} = {currentChallenge.valueAHistory[0] ^ currentChallenge.valueBHistory[0]}</p>
+                            
+                            <p className="font-semibold mt-2">Step 2: b = a ^ b</p>
+                            <p>b = {currentChallenge.valueAHistory[0] ^ currentChallenge.valueBHistory[0]} ^ {currentChallenge.valueBHistory[0]} = {currentChallenge.valueAHistory[0]}</p>
+                            
+                            <p className="font-semibold mt-2">Step 3: a = a ^ b</p>
+                            <p>a = {currentChallenge.valueAHistory[0] ^ currentChallenge.valueBHistory[0]} ^ {currentChallenge.valueAHistory[0]} = {currentChallenge.valueBHistory[0]}</p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </TabsContent>
+          </Tabs>
+          
+          <CardFooter className="flex justify-between border-t pt-4">
+            {isCorrect && (
+              <Button onClick={nextChallenge}>Next Challenge</Button>
+            )}
+            <Badge variant="outline">+{currentChallenge?.xpValue || 0} XP</Badge>
+          </CardFooter>
+        </Card>
+        
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bitwise Operations Overview</CardTitle>
+              <CardDescription>
+                Master the fundamental bitwise operations used in programming
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold">Bitwise AND (&amp;)</h3>
+                  <p className="text-sm">Sets each bit to 1 if both bits are 1</p>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    5 &amp; 3 = 1 (0101 &amp; 0011 = 0001)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Bitwise OR (|)</h3>
+                  <p className="text-sm">Sets each bit to 1 if any bit is 1</p>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    5 | 3 = 7 (0101 | 0011 = 0111)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Bitwise XOR (^)</h3>
+                  <p className="text-sm">Sets each bit to 1 if only one bit is 1</p>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    5 ^ 3 = 6 (0101 ^ 0011 = 0110)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Bitwise NOT (~)</h3>
+                  <p className="text-sm">Inverts all bits</p>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    ~5 = -6 (~0101 = 1010 in 2&apos;s complement)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Left Shift (&lt;&lt;)</h3>
+                  <p className="text-sm">Shifts bits left, filling with 0s</p>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    5 &lt;&lt; 1 = 10 (0101 &lt;&lt; 1 = 1010)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Right Shift (&gt;&gt;)</h3>
+                  <p className="text-sm">Shifts bits right</p>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    5 &gt;&gt; 1 = 2 (0101 &gt;&gt; 1 = 0010)
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Common Bit Manipulation Techniques</CardTitle>
+              <CardDescription>
+                Key techniques used across algorithms and systems programming
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold">Check if a bit is set</h3>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    (num &gt;&gt; position) &amp; 1
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Set a bit</h3>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    num | (1 &lt;&lt; position)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Clear a bit</h3>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    num &amp; ~(1 &lt;&lt; position)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Toggle a bit</h3>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    num ^ (1 &lt;&lt; position)
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Count set bits (population count)</h3>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    let count = 0;
+                    while (num) {'{'}<br />
+                      count += num &amp; 1;<br />
+                      num &gt;&gt;= 1;<br />
+                    {'}'}
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold">Get the lowest set bit</h3>
+                  <div className="font-mono bg-gray-50 p-2 mt-1 text-sm">
+                    num &amp; -num
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BitWizardryPage; 
