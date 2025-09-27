@@ -617,14 +617,14 @@ class LinkedList:
     },
     {
       id: 'dynamic-programming-challenge',
-      name: 'Dynamic Programming Challenge',
-      description: 'Solve classic optimization problems using dynamic programming techniques',
+      name: 'Dynamic Programming Adventure',
+      description: 'Master Dynamic Programming through multiple interactive games and challenges',
       icon: '🧮',
       difficulty: 'Hard',
       type: 'array-sort', // We'll reuse the visualizer UI but with custom code
       xp: 30,
       algorithm: 'dynamic_programming',
-      url: '/games/dynamic-programming',
+      url: '/games/dynamic-programming-adventure',
       pythonCode: [
         {
           step: 'Fibonacci with DP',
@@ -1979,16 +1979,16 @@ def add_one(n):
             {selectedGame === 'dynamic-programming-challenge' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-                  Dynamic Programming Challenge Game
+                  Dynamic Programming Adventure
                 </h2>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Click the button below to launch our interactive Dynamic Programming Challenge game where you can solve classic optimization problems using dynamic programming techniques!
+                  Master Dynamic Programming through multiple interactive games including foundational challenges and multiple choice questions!
                 </p>
                 <Link 
-                  href="/games/dynamic-programming-challenge" 
+                  href="/games/dynamic-programming-adventure" 
                   className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all"
                 >
-                  Play Dynamic Programming
+                  Enter DP Adventure
                 </Link>
               </div>
             )}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { addXP } from '../../utils/storage';
+import { addXP } from '../../../utils/storage';
 
 interface Challenge {
   id: number;
@@ -16,7 +16,7 @@ interface Challenge {
   explanation: string;
 }
 
-const DPAdventureGame = () => {
+const DPFoundationalGame = () => {
   // Game state
   const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>('');
@@ -632,7 +632,7 @@ const DPAdventureGame = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-              DP Adventure
+              DP Foundational
             </h1>
             <Link 
               href="/games" 
@@ -652,7 +652,7 @@ const DPAdventureGame = () => {
             <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
-                  DP Adventure
+                  DP Foundational
                 </h2>
                 {gameStarted && !gameOver && (
                   <div className="flex items-center space-x-4">
@@ -912,4 +912,4 @@ const DPAdventureGame = () => {
   );
 };
 
-export default DPAdventureGame; 
+export default DPFoundationalGame; 
