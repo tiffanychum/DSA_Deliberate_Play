@@ -32,18 +32,20 @@ const DPAdventurePage = () => {
     {
       id: 'dp-foundational',
       name: 'DP Foundational',
-      description: 'Master the basics of Dynamic Programming through interactive challenges with coin change, grid paths, and knapsack problems',
+      description: 'Master the fundamentals through hands-on coding challenges. Build intuition with coin change, grid paths, knapsack, and classic DP problems with step-by-step guidance.',
       icon: '🧮',
       difficulty: 'Medium',
-      color: 'from-indigo-500 to-purple-600'
+      color: 'from-indigo-500 to-purple-600',
+      questionCount: '10+ Interactive Challenges'
     },
     {
       id: 'dp-multiple-choice',
       name: 'DP Multiple Choice',
-      description: 'Test your understanding of DP concepts through carefully crafted questions with hints, explanations, and code analysis',
+      description: 'Comprehensive assessment covering 10 major DP patterns: Knapsack, State Machine, Interval, Linear, Digit, Tree, 2D Grid, String DP, plus optimization techniques and advanced algorithms.',
       icon: '🎯',
       difficulty: 'Medium',
-      color: 'from-purple-500 to-pink-600'
+      color: 'from-purple-500 to-pink-600',
+      questionCount: '113 Questions + Follow-ups'
     }
   ];
 
@@ -84,12 +86,78 @@ const DPAdventurePage = () => {
       {/* Main Content */}
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-4">
             Dynamic Programming Adventure
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Master Dynamic Programming through interactive games and challenges. Choose your learning path below!
-          </p>
+          
+          {/* Topic Coverage Summary */}
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 max-w-4xl mx-auto border border-white/20 dark:border-gray-700/30">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              📚 Comprehensive DP Topic Coverage
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+              <div className="bg-indigo-50 dark:bg-indigo-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-indigo-700 dark:text-indigo-300">Knapsack DP</span>
+                <div className="text-xs text-indigo-600 dark:text-indigo-400">12 Questions</div>
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-purple-700 dark:text-purple-300">State Machine</span>
+                <div className="text-xs text-purple-600 dark:text-purple-400">12 Questions</div>
+              </div>
+              <div className="bg-pink-50 dark:bg-pink-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-pink-700 dark:text-pink-300">Interval DP</span>
+                <div className="text-xs text-pink-600 dark:text-pink-400">9 Questions</div>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-blue-700 dark:text-blue-300">Linear DP</span>
+                <div className="text-xs text-blue-600 dark:text-blue-400">8 Questions</div>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-green-700 dark:text-green-300">Digit DP</span>
+                <div className="text-xs text-green-600 dark:text-green-400">15 Questions</div>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-yellow-700 dark:text-yellow-300">Tree DP</span>
+                <div className="text-xs text-yellow-600 dark:text-yellow-400">9 Questions</div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-red-700 dark:text-red-300">2D Grid DP</span>
+                <div className="text-xs text-red-600 dark:text-red-400">9 Questions</div>
+              </div>
+              <div className="bg-cyan-50 dark:bg-cyan-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-cyan-700 dark:text-cyan-300">String DP</span>
+                <div className="text-xs text-cyan-600 dark:text-cyan-400">9 Questions</div>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-orange-700 dark:text-orange-300">Optimization</span>
+                <div className="text-xs text-orange-600 dark:text-orange-400">14 Questions</div>
+              </div>
+              <div className="bg-teal-50 dark:bg-teal-900/30 px-3 py-2 rounded-lg">
+                <span className="font-medium text-teal-700 dark:text-teal-300">Fundamentals</span>
+                <div className="text-xs text-teal-600 dark:text-teal-400">16 Questions</div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <div className="flex items-center justify-center space-x-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                  <span className="text-gray-600 dark:text-gray-300">47 Missing Lines</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span className="text-gray-600 dark:text-gray-300">57 Conceptual</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-600 dark:text-gray-300">8 Optimization</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                  <span className="text-gray-600 dark:text-gray-300">113 Total + Follow-ups</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Game Cards */}
@@ -121,9 +189,15 @@ const DPAdventurePage = () => {
                   {game.name}
                 </h3>
                 
-                <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
                   {game.description}
                 </p>
+                
+                <div className="flex items-center justify-between mb-6">
+                  <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">
+                    {game.questionCount}
+                  </span>
+                </div>
                 
                 <button className={`w-full py-3 px-6 bg-gradient-to-r ${game.color} text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all`}>
                   Play Now
