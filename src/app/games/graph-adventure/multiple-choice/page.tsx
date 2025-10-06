@@ -106,8 +106,3557 @@ const GraphMultipleChoiceGame = () => {
   const [showSCCComparisonVisualization, setShowSCCComparisonVisualization] = useState<{[key: number]: boolean}>({});
   const [sccComparisonAnimationStep, setSCCComparisonAnimationStep] = useState<{[key: number]: number}>({});
   const [sccComparisonAlgorithm, setSCCComparisonAlgorithm] = useState<{[key: number]: 'kosaraju' | 'tarjan'}>({});
+  
+  // Bridge Detection Optimization Visualization
+  const [showBridgeOptimizationVisualization, setShowBridgeOptimizationVisualization] = useState<{[key: number]: boolean}>({});
+  const [bridgeOptimizationAnimationStep, setBridgeOptimizationAnimationStep] = useState<{[key: number]: number}>({});
+  
+  // Ford-Fulkerson Visualization
+  const [showFordFulkersonVisualization, setShowFordFulkersonVisualization] = useState<{[key: number]: boolean}>({});
+  const [fordFulkersonAnimationStep, setFordFulkersonAnimationStep] = useState<{[key: number]: number}>({});
+  
+  // Edmonds-Karp vs Ford-Fulkerson Comparison Visualization
+  const [showEdmondsKarpComparison, setShowEdmondsKarpComparison] = useState<{[key: number]: boolean}>({});
+  const [edmondsKarpComparisonStep, setEdmondsKarpComparisonStep] = useState<{[key: number]: number}>({});
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<{[key: number]: 'edmonds-karp' | 'ford-fulkerson'}>({});
+  
+  // Hopcroft-Karp vs Basic Bipartite Matching Visualization
+  const [showHopcroftKarpComparison, setShowHopcroftKarpComparison] = useState<{[key: number]: boolean}>({});
+  const [hopcroftKarpComparisonStep, setHopcroftKarpComparisonStep] = useState<{[key: number]: number}>({});
+  const [selectedBipartiteAlgorithm, setSelectedBipartiteAlgorithm] = useState<{[key: number]: 'hopcroft-karp' | 'basic-matching'}>({});
+  
+  // Image Segmentation Max-Flow Visualization
+  const [showImageSegmentationVisualization, setShowImageSegmentationVisualization] = useState<{[key: number]: boolean}>({});
+  const [imageSegmentationStep, setImageSegmentationStep] = useState<{[key: number]: number}>({});
+  
+  // Dinic's vs Edmonds-Karp Comparison Visualization
+  const [showDinicComparison, setShowDinicComparison] = useState<{[key: number]: boolean}>({});
+  const [dinicComparisonStep, setDinicComparisonStep] = useState<{[key: number]: number}>({});
+  const [selectedMaxFlowAlgorithm, setSelectedMaxFlowAlgorithm] = useState<{[key: number]: 'dinic' | 'edmonds-karp'}>({});
+  
+  // Push-Relabel Visualization
+  const [showPushRelabelVisualization, setShowPushRelabelVisualization] = useState<{[key: number]: boolean}>({});
+  const [pushRelabelStep, setPushRelabelStep] = useState<{[key: number]: number}>({});
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Ford-Fulkerson Visualization Component
+  interface FordFulkersonAnimationStep {
+    description: string;
+    phase: 'initialization' | 'bfs-search' | 'path-found' | 'bottleneck-calculation' | 'flow-update' | 'complete';
+    currentPath: string[];
+    residualGraph: number[][];
+    currentFlow: number;
+    totalFlow: number;
+    bottleneckCapacity: number;
+    highlightEdges: { from: number; to: number; type: 'forward' | 'backward' | 'bottleneck' }[];
+    iteration: number;
+    complexity: string;
+    memoryUsage: string;
+  }
+
+  const FordFulkersonVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const animationRef = useRef<number | null>(null);
+
+    // Flow network graph: Source(0) -> Sink(5)
+    const nodePositions = [
+      { id: 0, x: 80, y: 150, label: 'S' },   // Source
+      { id: 1, x: 200, y: 80, label: '1' },
+      { id: 2, x: 200, y: 220, label: '2' },
+      { id: 3, x: 320, y: 80, label: '3' },
+      { id: 4, x: 320, y: 220, label: '4' },
+      { id: 5, x: 440, y: 150, label: 'T' }   // Sink
+    ];
+
+    const initialCapacities = [
+      [0, 16, 13, 0, 0, 0],  // Source (0)
+      [0, 0, 10, 12, 0, 0],  // Node 1
+      [0, 4, 0, 0, 14, 0],   // Node 2  
+      [0, 0, 9, 0, 0, 20],   // Node 3
+      [0, 0, 0, 7, 0, 4],    // Node 4
+      [0, 0, 0, 0, 0, 0]     // Sink (5)
+    ];
+
+    const getAnimationSteps = (): FordFulkersonAnimationStep[] => {
+      const steps: FordFulkersonAnimationStep[] = [];
+      const residualGraph = initialCapacities.map(row => [...row]);
+      let totalFlow = 0;
+      let iteration = 1;
+
+      // Step 1: Initialization
+      steps.push({
+        description: "Initialize Ford-Fulkerson: Create residual graph with original capacities. Total flow = 0.",
+        phase: 'initialization',
+        currentPath: [],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow: 0,
+        bottleneckCapacity: 0,
+        highlightEdges: [],
+        iteration: 0,
+        complexity: "O(1) - Initialization",
+        memoryUsage: "O(V²) - Residual graph storage"
+      });
+
+      // Iteration 1: Path S->1->3->T (flow = 12)
+      steps.push({
+        description: "BFS Search: Find augmenting path from Source to Sink using BFS (Edmonds-Karp).",
+        phase: 'bfs-search',
+        currentPath: ['S', '1', '3', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        bottleneckCapacity: 0,
+        highlightEdges: [
+          { from: 0, to: 1, type: 'forward' },
+          { from: 1, to: 3, type: 'forward' },
+          { from: 3, to: 5, type: 'forward' }
+        ],
+        iteration,
+        complexity: "O(VE) - BFS traversal",
+        memoryUsage: "O(V) - BFS queue and visited set"
+      });
+
+      const bottleneck1 = Math.min(residualGraph[0][1], residualGraph[1][3], residualGraph[3][5]); // min(16, 12, 20) = 12
+      steps.push({
+        description: `Path Found: S→1→3→T. Calculate bottleneck: min(16, 12, 20) = 12. This is the maximum flow we can push.`,
+        phase: 'bottleneck-calculation',
+        currentPath: ['S', '1', '3', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: bottleneck1,
+        totalFlow,
+        bottleneckCapacity: bottleneck1,
+        highlightEdges: [
+          { from: 0, to: 1, type: 'forward' },
+          { from: 1, to: 3, type: 'bottleneck' },
+          { from: 3, to: 5, type: 'forward' }
+        ],
+        iteration,
+        complexity: "O(V) - Path traversal",
+        memoryUsage: "O(V) - Path storage"
+      });
+
+      // Update residual graph
+      residualGraph[0][1] -= bottleneck1; // 16 - 12 = 4
+      residualGraph[1][3] -= bottleneck1; // 12 - 12 = 0
+      residualGraph[3][5] -= bottleneck1; // 20 - 12 = 8
+      residualGraph[1][0] += bottleneck1; // 0 + 12 = 12 (backward edge)
+      residualGraph[3][1] += bottleneck1; // 0 + 12 = 12 (backward edge)
+      residualGraph[5][3] += bottleneck1; // 0 + 12 = 12 (backward edge)
+      totalFlow += bottleneck1;
+
+      steps.push({
+        description: `Flow Update: Subtract flow from forward edges, add flow to backward edges. Total flow = ${totalFlow}.`,
+        phase: 'flow-update',
+        currentPath: ['S', '1', '3', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: bottleneck1,
+        totalFlow,
+        bottleneckCapacity: bottleneck1,
+        highlightEdges: [
+          { from: 0, to: 1, type: 'forward' },
+          { from: 1, to: 0, type: 'backward' },
+          { from: 1, to: 3, type: 'forward' },
+          { from: 3, to: 1, type: 'backward' },
+          { from: 3, to: 5, type: 'forward' },
+          { from: 5, to: 3, type: 'backward' }
+        ],
+        iteration: iteration++,
+        complexity: "O(V) - Path update",
+        memoryUsage: "O(V²) - Residual graph update"
+      });
+
+      // Iteration 2: Path S->2->4->T (flow = 4)
+      steps.push({
+        description: "BFS Search: Find next augmenting path S→2→4→T.",
+        phase: 'bfs-search',
+        currentPath: ['S', '2', '4', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        bottleneckCapacity: 0,
+        highlightEdges: [
+          { from: 0, to: 2, type: 'forward' },
+          { from: 2, to: 4, type: 'forward' },
+          { from: 4, to: 5, type: 'forward' }
+        ],
+        iteration,
+        complexity: "O(VE) - BFS traversal",
+        memoryUsage: "O(V) - BFS queue and visited set"
+      });
+
+      const bottleneck2 = Math.min(residualGraph[0][2], residualGraph[2][4], residualGraph[4][5]); // min(13, 14, 4) = 4
+      steps.push({
+        description: `Path Found: S→2→4→T. Calculate bottleneck: min(13, 14, 4) = 4.`,
+        phase: 'bottleneck-calculation',
+        currentPath: ['S', '2', '4', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: bottleneck2,
+        totalFlow,
+        bottleneckCapacity: bottleneck2,
+        highlightEdges: [
+          { from: 0, to: 2, type: 'forward' },
+          { from: 2, to: 4, type: 'forward' },
+          { from: 4, to: 5, type: 'bottleneck' }
+        ],
+        iteration,
+        complexity: "O(V) - Path traversal",
+        memoryUsage: "O(V) - Path storage"
+      });
+
+      // Update residual graph
+      residualGraph[0][2] -= bottleneck2; // 13 - 4 = 9
+      residualGraph[2][4] -= bottleneck2; // 14 - 4 = 10
+      residualGraph[4][5] -= bottleneck2; // 4 - 4 = 0
+      residualGraph[2][0] += bottleneck2; // 0 + 4 = 4 (backward edge)
+      residualGraph[4][2] += bottleneck2; // 0 + 4 = 4 (backward edge)
+      residualGraph[5][4] += bottleneck2; // 0 + 4 = 4 (backward edge)
+      totalFlow += bottleneck2;
+
+      steps.push({
+        description: `Flow Update: Update residual capacities. Total flow = ${totalFlow}.`,
+        phase: 'flow-update',
+        currentPath: ['S', '2', '4', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: bottleneck2,
+        totalFlow,
+        bottleneckCapacity: bottleneck2,
+        highlightEdges: [
+          { from: 0, to: 2, type: 'forward' },
+          { from: 2, to: 0, type: 'backward' },
+          { from: 2, to: 4, type: 'forward' },
+          { from: 4, to: 2, type: 'backward' },
+          { from: 4, to: 5, type: 'forward' },
+          { from: 5, to: 4, type: 'backward' }
+        ],
+        iteration: iteration++,
+        complexity: "O(V) - Path update",
+        memoryUsage: "O(V²) - Residual graph update"
+      });
+
+      // Iteration 3: Path S->2->1->3->T (flow = 7)
+      steps.push({
+        description: "BFS Search: Find augmenting path S→2→1→3→T using backward edge 2→1.",
+        phase: 'bfs-search',
+        currentPath: ['S', '2', '1', '3', 'T'],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        bottleneckCapacity: 0,
+        highlightEdges: [
+          { from: 0, to: 2, type: 'forward' },
+          { from: 2, to: 1, type: 'backward' },
+          { from: 1, to: 3, type: 'backward' },
+          { from: 3, to: 5, type: 'forward' }
+        ],
+        iteration,
+        complexity: "O(VE) - BFS traversal",
+        memoryUsage: "O(V) - BFS queue and visited set"
+      });
+
+      const bottleneck3 = Math.min(residualGraph[0][2], residualGraph[2][1], residualGraph[1][3], residualGraph[3][5]); // min(9, 4, 0, 8) = 0
+      // Actually, let's use a different path since 1->3 has 0 capacity. Let's use S->1->2->4->T
+      
+      steps.push({
+        description: `No More Paths: BFS cannot find augmenting path to sink. Algorithm terminates. Maximum flow = ${totalFlow}.`,
+        phase: 'complete',
+        currentPath: [],
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        bottleneckCapacity: 0,
+        highlightEdges: [],
+        iteration,
+        complexity: "O(VE²) - Total Ford-Fulkerson complexity",
+        memoryUsage: "O(V²) - Final residual graph"
+      });
+
+      return steps;
+    };
+
+    const steps = getAnimationSteps();
+    const currentStep = fordFulkersonAnimationStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawGraph = (canvas: HTMLCanvasElement, step: FordFulkersonAnimationStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set up canvas
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+
+      // Draw edges with capacities
+      for (let i = 0; i < step.residualGraph.length; i++) {
+        for (let j = 0; j < step.residualGraph[i].length; j++) {
+          if (step.residualGraph[i][j] > 0) {
+            const fromNode = nodePositions[i];
+            const toNode = nodePositions[j];
+            
+            // Check if this edge is highlighted
+            const highlightEdge = step.highlightEdges.find(e => e.from === i && e.to === j);
+            
+            // Set edge color based on type
+            if (highlightEdge) {
+              if (highlightEdge.type === 'bottleneck') {
+                ctx.strokeStyle = '#dc2626'; // Red for bottleneck
+                ctx.lineWidth = 4;
+              } else if (highlightEdge.type === 'backward') {
+                ctx.strokeStyle = '#7c3aed'; // Purple for backward edges
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+              } else {
+                ctx.strokeStyle = '#059669'; // Green for forward edges
+                ctx.lineWidth = 3;
+              }
+            } else {
+              ctx.strokeStyle = '#6b7280'; // Gray for normal edges
+              ctx.lineWidth = 2;
+            }
+
+            // Draw edge
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw arrow
+            const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+            const arrowLength = 12;
+            const arrowAngle = Math.PI / 6;
+
+            const arrowX = toNode.x - Math.cos(angle) * 25;
+            const arrowY = toNode.y - Math.sin(angle) * 25;
+
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - arrowLength * Math.cos(angle - arrowAngle), arrowY - arrowLength * Math.sin(angle - arrowAngle));
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - arrowLength * Math.cos(angle + arrowAngle), arrowY - arrowLength * Math.sin(angle + arrowAngle));
+            ctx.stroke();
+
+            // Draw capacity label
+            const midX = (fromNode.x + toNode.x) / 2;
+            const midY = (fromNode.y + toNode.y) / 2;
+            
+            ctx.fillStyle = highlightEdge ? '#ffffff' : '#1f2937';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillRect(midX - 8, midY - 8, 16, 16);
+            ctx.fillStyle = highlightEdge ? '#1f2937' : '#ffffff';
+            ctx.fillText(step.residualGraph[i][j].toString(), midX, midY + 3);
+          }
+        }
+      }
+
+      // Draw nodes
+      nodePositions.forEach((node, index) => {
+        const isInPath = step.currentPath.includes(node.label);
+        
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+        
+        if (index === 0) { // Source
+          ctx.fillStyle = '#3b82f6';
+        } else if (index === 5) { // Sink
+          ctx.fillStyle = '#ef4444';
+        } else if (isInPath) {
+          ctx.fillStyle = '#059669';
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = (index === 0 || index === 5 || isInPath) ? '#ffffff' : '#374151';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(node.label, node.x, node.y + 5);
+      });
+
+      // Draw algorithm info panel
+      const infoX = 480;
+      const infoY = 20;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 240, 220);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 240, 220);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('🌊 Ford-Fulkerson State', infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Iteration: ${step.iteration}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Phase: ${step.phase}`, infoX + 10, infoY + 55);
+      
+      if (step.currentPath.length > 0) {
+        ctx.fillText(`Path: ${step.currentPath.join('→')}`, infoX + 10, infoY + 70);
+      }
+      
+      if (step.bottleneckCapacity > 0) {
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText(`Bottleneck: ${step.bottleneckCapacity}`, infoX + 10, infoY + 85);
+      }
+      
+      ctx.fillStyle = '#059669';
+      ctx.fillText(`Current Flow: ${step.currentFlow}`, infoX + 10, infoY + 100);
+      ctx.fillText(`Total Flow: ${step.totalFlow}`, infoX + 10, infoY + 115);
+      
+      ctx.fillStyle = '#1f2937';
+      ctx.fillText(`Complexity: ${step.complexity}`, infoX + 10, infoY + 135);
+      ctx.fillText(`Memory: ${step.memoryUsage}`, infoX + 10, infoY + 150);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 175);
+
+      // Legend
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText('Legend:', infoX + 10, infoY + 195);
+      
+      ctx.fillStyle = '#059669';
+      ctx.fillRect(infoX + 10, infoY + 200, 10, 3);
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '9px Arial';
+      ctx.fillText('Forward', infoX + 25, infoY + 205);
+      
+      ctx.fillStyle = '#7c3aed';
+      ctx.fillRect(infoX + 70, infoY + 200, 10, 3);
+      ctx.fillText('Backward', infoX + 85, infoY + 205);
+      
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(infoX + 130, infoY + 200, 10, 3);
+      ctx.fillText('Bottleneck', infoX + 145, infoY + 205);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawGraph(canvas, step);
+    }, [currentStep, questionId, step]);
+
+    return (
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-blue-800 dark:text-blue-200">
+            🌊 Ford-Fulkerson Maximum Flow Algorithm
+          </h4>
+        </div>
+        
+        <canvas
+          ref={canvasRef}
+          width={740}
+          height={300}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-blue-600 dark:text-blue-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1).replace('-', ' ')}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-center items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setFordFulkersonAnimationStep(prev => ({
+                ...prev,
+                [questionId]: 0
+              }))}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium transition-colors"
+            >
+              ↺ Reset
+            </button>
+            <button
+              onClick={() => setFordFulkersonAnimationStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === 0}
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setFordFulkersonAnimationStep(prev => ({
+                ...prev,
+                [questionId]: Math.min(steps.length - 1, (prev[questionId] || 0) + 1)
+              }))}
+              className="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === steps.length - 1}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Edmonds-Karp vs Ford-Fulkerson Comparison Visualization Component
+  interface AlgorithmComparisonStep {
+    description: string;
+    algorithm: 'edmonds-karp' | 'ford-fulkerson';
+    phase: 'initialization' | 'path-search' | 'path-found' | 'flow-update' | 'complete';
+    currentPath: string[];
+    pathLength: number;
+    iteration: number;
+    totalIterations: number;
+    searchMethod: 'BFS' | 'DFS';
+    residualGraph: number[][];
+    currentFlow: number;
+    totalFlow: number;
+    complexity: string;
+    searchOrder: string[];
+  }
+
+  const EdmondsKarpComparisonVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const algorithm = selectedAlgorithm[questionId] || 'edmonds-karp';
+
+    // Pathological case graph where Ford-Fulkerson performs poorly
+    const nodePositions = [
+      { id: 0, x: 80, y: 150, label: 'S' },   // Source
+      { id: 1, x: 200, y: 100, label: 'A' },
+      { id: 2, x: 200, y: 200, label: 'B' },
+      { id: 3, x: 320, y: 150, label: 'T' }   // Sink
+    ];
+
+    const initialCapacities = [
+      [0, 1000, 1000, 0],    // Source to A, B
+      [0, 0, 1, 1000],       // A to B (bottleneck), A to Sink
+      [0, 0, 0, 1000],       // B to Sink
+      [0, 0, 0, 0]           // Sink
+    ];
+
+    const getEdmondsKarpSteps = (): AlgorithmComparisonStep[] => {
+      const steps: AlgorithmComparisonStep[] = [];
+      const residualGraph = initialCapacities.map(row => [...row]);
+      let totalFlow = 0;
+
+      // Edmonds-Karp: BFS finds shortest paths first
+      steps.push({
+        description: "Edmonds-Karp: Initialize with BFS path finding. Always finds shortest augmenting paths.",
+        algorithm: 'edmonds-karp',
+        phase: 'initialization',
+        currentPath: [],
+        pathLength: 0,
+        iteration: 0,
+        totalIterations: 2,
+        searchMethod: 'BFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow: 0,
+        complexity: "O(VE²) - Guaranteed polynomial time",
+        searchOrder: []
+      });
+
+      // Iteration 1: S->A->T (shortest path, length 2)
+      steps.push({
+        description: "BFS Search: Find shortest path S→A→T (length 2). BFS explores level by level.",
+        algorithm: 'edmonds-karp',
+        phase: 'path-search',
+        currentPath: ['S', 'A', 'T'],
+        pathLength: 2,
+        iteration: 1,
+        totalIterations: 2,
+        searchMethod: 'BFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        complexity: "O(VE) - BFS traversal",
+        searchOrder: ['S', 'A', 'B', 'T'] // BFS order
+      });
+
+      const flow1 = Math.min(residualGraph[0][1], residualGraph[1][3]); // min(1000, 1000) = 1000
+      residualGraph[0][1] -= flow1;
+      residualGraph[1][3] -= flow1;
+      residualGraph[1][0] += flow1;
+      residualGraph[3][1] += flow1;
+      totalFlow += flow1;
+
+      steps.push({
+        description: `Path Found: S→A→T with flow ${flow1}. Update residual graph.`,
+        algorithm: 'edmonds-karp',
+        phase: 'flow-update',
+        currentPath: ['S', 'A', 'T'],
+        pathLength: 2,
+        iteration: 1,
+        totalIterations: 2,
+        searchMethod: 'BFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: flow1,
+        totalFlow,
+        complexity: "O(V) - Path update",
+        searchOrder: []
+      });
+
+      // Iteration 2: S->B->T (shortest path, length 2)
+      steps.push({
+        description: "BFS Search: Find next shortest path S→B→T (length 2).",
+        algorithm: 'edmonds-karp',
+        phase: 'path-search',
+        currentPath: ['S', 'B', 'T'],
+        pathLength: 2,
+        iteration: 2,
+        totalIterations: 2,
+        searchMethod: 'BFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        complexity: "O(VE) - BFS traversal",
+        searchOrder: ['S', 'B', 'T'] // BFS order
+      });
+
+      const flow2 = Math.min(residualGraph[0][2], residualGraph[2][3]); // min(1000, 1000) = 1000
+      residualGraph[0][2] -= flow2;
+      residualGraph[2][3] -= flow2;
+      residualGraph[2][0] += flow2;
+      residualGraph[3][2] += flow2;
+      totalFlow += flow2;
+
+      steps.push({
+        description: `Edmonds-Karp Complete: Found maximum flow ${totalFlow} in just 2 iterations using shortest paths.`,
+        algorithm: 'edmonds-karp',
+        phase: 'complete',
+        currentPath: [],
+        pathLength: 0,
+        iteration: 2,
+        totalIterations: 2,
+        searchMethod: 'BFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: flow2,
+        totalFlow,
+        complexity: "O(VE²) - Total complexity",
+        searchOrder: []
+      });
+
+      return steps;
+    };
+
+    const getFordFulkersonSteps = (): AlgorithmComparisonStep[] => {
+      const steps: AlgorithmComparisonStep[] = [];
+      const residualGraph = initialCapacities.map(row => [...row]);
+      let totalFlow = 0;
+
+      // Ford-Fulkerson: DFS might find longer paths
+      steps.push({
+        description: "Basic Ford-Fulkerson: Initialize with DFS path finding. May find any augmenting path.",
+        algorithm: 'ford-fulkerson',
+        phase: 'initialization',
+        currentPath: [],
+        pathLength: 0,
+        iteration: 0,
+        totalIterations: 1001, // Worst case: 1000 iterations of flow 1 + 1 final iteration
+        searchMethod: 'DFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow: 0,
+        complexity: "O(E * max_flow) - Can be exponential",
+        searchOrder: []
+      });
+
+      // Worst case: DFS finds S->A->B->T path (uses bottleneck edge A->B with capacity 1)
+      steps.push({
+        description: "DFS Search: Finds longer path S→A→B→T (length 3). DFS goes deep first, may choose poor paths.",
+        algorithm: 'ford-fulkerson',
+        phase: 'path-search',
+        currentPath: ['S', 'A', 'B', 'T'],
+        pathLength: 3,
+        iteration: 1,
+        totalIterations: 1001,
+        searchMethod: 'DFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow,
+        complexity: "O(V + E) - DFS traversal",
+        searchOrder: ['S', 'A', 'B', 'T'] // DFS order (depth-first)
+      });
+
+      const flow1 = Math.min(residualGraph[0][1], residualGraph[1][2], residualGraph[2][3]); // min(1000, 1, 1000) = 1
+      residualGraph[0][1] -= flow1;
+      residualGraph[1][2] -= flow1;
+      residualGraph[2][3] -= flow1;
+      residualGraph[1][0] += flow1;
+      residualGraph[2][1] += flow1;
+      residualGraph[3][2] += flow1;
+      totalFlow += flow1;
+
+      steps.push({
+        description: `Path Found: S→A→B→T with flow ${flow1} (bottleneck at A→B). This is inefficient!`,
+        algorithm: 'ford-fulkerson',
+        phase: 'flow-update',
+        currentPath: ['S', 'A', 'B', 'T'],
+        pathLength: 3,
+        iteration: 1,
+        totalIterations: 1001,
+        searchMethod: 'DFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: flow1,
+        totalFlow,
+        complexity: "O(V) - Path update",
+        searchOrder: []
+      });
+
+      steps.push({
+        description: `Ford-Fulkerson Problem: Would need 1000 more iterations of flow 1 each! DFS keeps finding the bottleneck path S→A→B→T until A→B capacity is exhausted.`,
+        algorithm: 'ford-fulkerson',
+        phase: 'path-search',
+        currentPath: ['S', 'A', 'B', 'T'],
+        pathLength: 3,
+        iteration: 1000,
+        totalIterations: 1001,
+        searchMethod: 'DFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 1,
+        totalFlow: 1000,
+        complexity: "O(E * max_flow) - Exponential in worst case",
+        searchOrder: ['S', 'A', 'B', 'T']
+      });
+
+      steps.push({
+        description: `Ford-Fulkerson Complete: Same maximum flow ${2000} but took 1001 iterations vs Edmonds-Karp's 2 iterations!`,
+        algorithm: 'ford-fulkerson',
+        phase: 'complete',
+        currentPath: [],
+        pathLength: 0,
+        iteration: 1001,
+        totalIterations: 1001,
+        searchMethod: 'DFS',
+        residualGraph: residualGraph.map(row => [...row]),
+        currentFlow: 0,
+        totalFlow: 2000,
+        complexity: "O(E * max_flow) - Exponential time",
+        searchOrder: []
+      });
+
+      return steps;
+    };
+
+    const steps = algorithm === 'edmonds-karp' ? getEdmondsKarpSteps() : getFordFulkersonSteps();
+    const currentStep = edmondsKarpComparisonStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawGraph = (canvas: HTMLCanvasElement, step: AlgorithmComparisonStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set up canvas
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+
+      // Draw edges with capacities
+      for (let i = 0; i < step.residualGraph.length; i++) {
+        for (let j = 0; j < step.residualGraph[i].length; j++) {
+          if (initialCapacities[i][j] > 0) { // Only draw original edges
+            const fromNode = nodePositions[i];
+            const toNode = nodePositions[j];
+            
+            // Check if this edge is in current path
+            const isInPath = step.currentPath.length > 0 && 
+              step.currentPath.some((node, idx) => 
+                idx < step.currentPath.length - 1 &&
+                ((node === fromNode.label && step.currentPath[idx + 1] === toNode.label))
+              );
+            
+            // Set edge color
+            if (isInPath) {
+              ctx.strokeStyle = step.algorithm === 'edmonds-karp' ? '#059669' : '#dc2626';
+              ctx.lineWidth = 4;
+            } else {
+              ctx.strokeStyle = '#6b7280';
+              ctx.lineWidth = 2;
+            }
+
+            // Draw edge
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.stroke();
+
+            // Draw arrow
+            const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+            const arrowLength = 12;
+            const arrowAngle = Math.PI / 6;
+
+            const arrowX = toNode.x - Math.cos(angle) * 25;
+            const arrowY = toNode.y - Math.sin(angle) * 25;
+
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - arrowLength * Math.cos(angle - arrowAngle), arrowY - arrowLength * Math.sin(angle - arrowAngle));
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - arrowLength * Math.cos(angle + arrowAngle), arrowY - arrowLength * Math.sin(angle + arrowAngle));
+            ctx.stroke();
+
+            // Draw capacity label
+            const midX = (fromNode.x + toNode.x) / 2;
+            const midY = (fromNode.y + toNode.y) / 2;
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(midX - 12, midY - 8, 24, 16);
+            ctx.fillStyle = isInPath ? (step.algorithm === 'edmonds-karp' ? '#059669' : '#dc2626') : '#1f2937';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText(`${step.residualGraph[i][j]}/${initialCapacities[i][j]}`, midX, midY + 3);
+          }
+        }
+      }
+
+      // Draw nodes
+      nodePositions.forEach((node, index) => {
+        const isInPath = step.currentPath.includes(node.label);
+        
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+        
+        if (index === 0) { // Source
+          ctx.fillStyle = '#3b82f6';
+        } else if (index === 3) { // Sink
+          ctx.fillStyle = '#ef4444';
+        } else if (isInPath) {
+          ctx.fillStyle = step.algorithm === 'edmonds-karp' ? '#059669' : '#dc2626';
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = (index === 0 || index === 3 || isInPath) ? '#ffffff' : '#374151';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(node.label, node.x, node.y + 5);
+      });
+
+      // Draw algorithm comparison info panel
+      const infoX = 420;
+      const infoY = 20;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 300, 260);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 300, 260);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      const title = step.algorithm === 'edmonds-karp' ? '🚀 Edmonds-Karp (BFS)' : '⚠️ Basic Ford-Fulkerson (DFS)';
+      ctx.fillText(title, infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Search Method: ${step.searchMethod}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Iteration: ${step.iteration}/${step.totalIterations}`, infoX + 10, infoY + 55);
+      
+      if (step.currentPath.length > 0) {
+        ctx.fillText(`Path: ${step.currentPath.join('→')} (length ${step.pathLength})`, infoX + 10, infoY + 70);
+      }
+      
+      ctx.fillText(`Current Flow: ${step.currentFlow}`, infoX + 10, infoY + 85);
+      ctx.fillText(`Total Flow: ${step.totalFlow}`, infoX + 10, infoY + 100);
+      
+      ctx.fillStyle = step.algorithm === 'edmonds-karp' ? '#059669' : '#dc2626';
+      ctx.fillText(`Complexity: ${step.complexity}`, infoX + 10, infoY + 120);
+      
+      // Key differences
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText('Key Differences:', infoX + 10, infoY + 145);
+      
+      ctx.font = '9px Arial';
+      if (step.algorithm === 'edmonds-karp') {
+        ctx.fillStyle = '#059669';
+        ctx.fillText('✓ BFS finds shortest paths first', infoX + 10, infoY + 160);
+        ctx.fillText('✓ Guaranteed O(VE²) time complexity', infoX + 10, infoY + 175);
+        ctx.fillText('✓ Fewer iterations needed', infoX + 10, infoY + 190);
+        ctx.fillText('✓ Polynomial time guarantee', infoX + 10, infoY + 205);
+      } else {
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText('⚠ DFS may find longer paths', infoX + 10, infoY + 160);
+        ctx.fillText('⚠ O(E * max_flow) - can be exponential', infoX + 10, infoY + 175);
+        ctx.fillText('⚠ Many more iterations possible', infoX + 10, infoY + 190);
+        ctx.fillText('⚠ Poor performance on some graphs', infoX + 10, infoY + 205);
+      }
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 235);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawGraph(canvas, step);
+    }, [currentStep, questionId, step, algorithm]);
+
+    return (
+      <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-purple-800 dark:text-purple-200">
+            ⚡ Edmonds-Karp vs Ford-Fulkerson Comparison
+          </h4>
+        </div>
+
+        {/* Algorithm Selection Buttons */}
+        <div className="flex justify-center mb-4 space-x-3">
+          <button
+            onClick={() => {
+              setSelectedAlgorithm(prev => ({ ...prev, [questionId]: 'edmonds-karp' }));
+              setEdmondsKarpComparisonStep(prev => ({ ...prev, [questionId]: 0 }));
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              algorithm === 'edmonds-karp'
+                ? 'bg-green-500 text-white shadow-lg'
+                : 'bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300'
+            }`}
+          >
+            🚀 Edmonds-Karp (BFS)
+          </button>
+          <button
+            onClick={() => {
+              setSelectedAlgorithm(prev => ({ ...prev, [questionId]: 'ford-fulkerson' }));
+              setEdmondsKarpComparisonStep(prev => ({ ...prev, [questionId]: 0 }));
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              algorithm === 'ford-fulkerson'
+                ? 'bg-red-500 text-white shadow-lg'
+                : 'bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300'
+            }`}
+          >
+            ⚠️ Basic Ford-Fulkerson (DFS)
+          </button>
+        </div>
+        
+        <canvas
+          ref={canvasRef}
+          width={740}
+          height={300}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-purple-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-purple-600 dark:text-purple-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1).replace('-', ' ')}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-center items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setEdmondsKarpComparisonStep(prev => ({
+                ...prev,
+                [questionId]: 0
+              }))}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium transition-colors"
+            >
+              ↺ Reset
+            </button>
+            <button
+              onClick={() => setEdmondsKarpComparisonStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === 0}
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setEdmondsKarpComparisonStep(prev => ({
+                ...prev,
+                [questionId]: Math.min(steps.length - 1, (prev[questionId] || 0) + 1)
+              }))}
+              className="px-3 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === steps.length - 1}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Hopcroft-Karp vs Basic Bipartite Matching Visualization Component
+  interface BipartiteMatchingStep {
+    description: string;
+    algorithm: 'hopcroft-karp' | 'basic-matching';
+    phase: 'initialization' | 'bfs-layering' | 'dfs-paths' | 'path-found' | 'complete';
+    currentPaths: string[][];
+    bfsLayers: { [layer: number]: string[] };
+    matching: { [leftNode: string]: string };
+    iteration: number;
+    totalIterations: number;
+    pathsFoundThisPhase: number;
+    complexity: string;
+    currentLayer: number;
+    highlightNodes: string[];
+    highlightEdges: { from: string; to: string; type: 'matching' | 'augmenting' | 'layer' }[];
+  }
+
+  const HopcroftKarpComparisonVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const algorithm = selectedBipartiteAlgorithm[questionId] || 'hopcroft-karp';
+
+    // Bipartite graph: Left nodes (L1-L4) and Right nodes (R1-R4)
+    const leftNodes = [
+      { id: 'L1', x: 100, y: 80, label: 'L1' },
+      { id: 'L2', x: 100, y: 140, label: 'L2' },
+      { id: 'L3', x: 100, y: 200, label: 'L3' },
+      { id: 'L4', x: 100, y: 260, label: 'L4' }
+    ];
+
+    const rightNodes = [
+      { id: 'R1', x: 300, y: 80, label: 'R1' },
+      { id: 'R2', x: 300, y: 140, label: 'R2' },
+      { id: 'R3', x: 300, y: 200, label: 'R3' },
+      { id: 'R4', x: 300, y: 260, label: 'R4' }
+    ];
+
+    const allNodes = [...leftNodes, ...rightNodes];
+
+    // Graph edges: each left node connects to 2 right nodes
+    const graphEdges = [
+      { from: 'L1', to: 'R1' }, { from: 'L1', to: 'R2' },
+      { from: 'L2', to: 'R2' }, { from: 'L2', to: 'R3' },
+      { from: 'L3', to: 'R3' }, { from: 'L3', to: 'R4' },
+      { from: 'L4', to: 'R1' }, { from: 'L4', to: 'R4' }
+    ];
+
+    const getHopcroftKarpSteps = (): BipartiteMatchingStep[] => {
+      const steps: BipartiteMatchingStep[] = [];
+      let matching: { [leftNode: string]: string } = {};
+
+      // Phase 1: Initialize
+      steps.push({
+        description: "Hopcroft-Karp: Initialize. Key optimization: BFS layering to find multiple augmenting paths simultaneously.",
+        algorithm: 'hopcroft-karp',
+        phase: 'initialization',
+        currentPaths: [],
+        bfsLayers: {},
+        matching,
+        iteration: 0,
+        totalIterations: 2,
+        pathsFoundThisPhase: 0,
+        complexity: "O(E√V) - BFS layering reduces phases",
+        currentLayer: 0,
+        highlightNodes: [],
+        highlightEdges: []
+      });
+
+      // Phase 1: BFS Layering
+      steps.push({
+        description: "Phase 1 - BFS Layering: Build layers from unmatched left nodes. Layer 0: L1,L2,L3,L4 (all unmatched).",
+        algorithm: 'hopcroft-karp',
+        phase: 'bfs-layering',
+        currentPaths: [],
+        bfsLayers: { 0: ['L1', 'L2', 'L3', 'L4'], 1: ['R1', 'R2', 'R3', 'R4'] },
+        matching,
+        iteration: 1,
+        totalIterations: 2,
+        pathsFoundThisPhase: 0,
+        complexity: "O(E) - BFS to build layers",
+        currentLayer: 0,
+        highlightNodes: ['L1', 'L2', 'L3', 'L4'],
+        highlightEdges: []
+      });
+
+      steps.push({
+        description: "BFS Layer 1: All right nodes R1,R2,R3,R4 are unmatched, so they form layer 1. Shortest paths have length 1.",
+        algorithm: 'hopcroft-karp',
+        phase: 'bfs-layering',
+        currentPaths: [],
+        bfsLayers: { 0: ['L1', 'L2', 'L3', 'L4'], 1: ['R1', 'R2', 'R3', 'R4'] },
+        matching,
+        iteration: 1,
+        totalIterations: 2,
+        pathsFoundThisPhase: 0,
+        complexity: "O(E) - BFS to build layers",
+        currentLayer: 1,
+        highlightNodes: ['R1', 'R2', 'R3', 'R4'],
+        highlightEdges: graphEdges.map(e => ({ from: e.from, to: e.to, type: 'layer' as const }))
+      });
+
+      // Phase 1: DFS to find multiple paths
+      steps.push({
+        description: "DFS Phase: Find multiple augmenting paths using BFS layers. Found paths: L1→R1, L2→R2, L3→R3, L4→R4.",
+        algorithm: 'hopcroft-karp',
+        phase: 'dfs-paths',
+        currentPaths: [['L1', 'R1'], ['L2', 'R2'], ['L3', 'R3'], ['L4', 'R4']],
+        bfsLayers: { 0: ['L1', 'L2', 'L3', 'L4'], 1: ['R1', 'R2', 'R3', 'R4'] },
+        matching,
+        iteration: 1,
+        totalIterations: 2,
+        pathsFoundThisPhase: 4,
+        complexity: "O(V) - DFS on layers",
+        currentLayer: 0,
+        highlightNodes: ['L1', 'L2', 'L3', 'L4', 'R1', 'R2', 'R3', 'R4'],
+        highlightEdges: [
+          { from: 'L1', to: 'R1', type: 'augmenting' },
+          { from: 'L2', to: 'R2', type: 'augmenting' },
+          { from: 'L3', to: 'R3', type: 'augmenting' },
+          { from: 'L4', to: 'R4', type: 'augmenting' }
+        ]
+      });
+
+      // Update matching
+      matching = { 'L1': 'R1', 'L2': 'R2', 'L3': 'R3', 'L4': 'R4' };
+
+      steps.push({
+        description: "Hopcroft-Karp Complete: Found maximum matching of 4 in just 1 phase! BFS layering allowed finding all 4 paths simultaneously.",
+        algorithm: 'hopcroft-karp',
+        phase: 'complete',
+        currentPaths: [],
+        bfsLayers: {},
+        matching,
+        iteration: 1,
+        totalIterations: 1,
+        pathsFoundThisPhase: 4,
+        complexity: "O(E√V) - Total complexity",
+        currentLayer: 0,
+        highlightNodes: [],
+        highlightEdges: [
+          { from: 'L1', to: 'R1', type: 'matching' },
+          { from: 'L2', to: 'R2', type: 'matching' },
+          { from: 'L3', to: 'R3', type: 'matching' },
+          { from: 'L4', to: 'R4', type: 'matching' }
+        ]
+      });
+
+      return steps;
+    };
+
+    const getBasicMatchingSteps = (): BipartiteMatchingStep[] => {
+      const steps: BipartiteMatchingStep[] = [];
+      let matching: { [leftNode: string]: string } = {};
+
+      steps.push({
+        description: "Basic Bipartite Matching: Initialize. No optimization: finds one augmenting path per iteration.",
+        algorithm: 'basic-matching',
+        phase: 'initialization',
+        currentPaths: [],
+        bfsLayers: {},
+        matching,
+        iteration: 0,
+        totalIterations: 4,
+        pathsFoundThisPhase: 0,
+        complexity: "O(VE) - One path per iteration",
+        currentLayer: 0,
+        highlightNodes: [],
+        highlightEdges: []
+      });
+
+      // Iteration 1: L1 → R1
+      steps.push({
+        description: "Iteration 1: Find augmenting path for L1. Found path L1→R1. Update matching.",
+        algorithm: 'basic-matching',
+        phase: 'path-found',
+        currentPaths: [['L1', 'R1']],
+        bfsLayers: {},
+        matching: { 'L1': 'R1' },
+        iteration: 1,
+        totalIterations: 4,
+        pathsFoundThisPhase: 1,
+        complexity: "O(E) - DFS for one path",
+        currentLayer: 0,
+        highlightNodes: ['L1', 'R1'],
+        highlightEdges: [{ from: 'L1', to: 'R1', type: 'augmenting' }]
+      });
+
+      matching = { 'L1': 'R1' };
+
+      // Iteration 2: L2 → R2
+      steps.push({
+        description: "Iteration 2: Find augmenting path for L2. Found path L2→R2. Update matching.",
+        algorithm: 'basic-matching',
+        phase: 'path-found',
+        currentPaths: [['L2', 'R2']],
+        bfsLayers: {},
+        matching: { ...matching, 'L2': 'R2' },
+        iteration: 2,
+        totalIterations: 4,
+        pathsFoundThisPhase: 1,
+        complexity: "O(E) - DFS for one path",
+        currentLayer: 0,
+        highlightNodes: ['L2', 'R2'],
+        highlightEdges: [
+          { from: 'L1', to: 'R1', type: 'matching' },
+          { from: 'L2', to: 'R2', type: 'augmenting' }
+        ]
+      });
+
+      matching = { 'L1': 'R1', 'L2': 'R2' };
+
+      // Iteration 3: L3 → R3
+      steps.push({
+        description: "Iteration 3: Find augmenting path for L3. Found path L3→R3. Update matching.",
+        algorithm: 'basic-matching',
+        phase: 'path-found',
+        currentPaths: [['L3', 'R3']],
+        bfsLayers: {},
+        matching: { ...matching, 'L3': 'R3' },
+        iteration: 3,
+        totalIterations: 4,
+        pathsFoundThisPhase: 1,
+        complexity: "O(E) - DFS for one path",
+        currentLayer: 0,
+        highlightNodes: ['L3', 'R3'],
+        highlightEdges: [
+          { from: 'L1', to: 'R1', type: 'matching' },
+          { from: 'L2', to: 'R2', type: 'matching' },
+          { from: 'L3', to: 'R3', type: 'augmenting' }
+        ]
+      });
+
+      matching = { 'L1': 'R1', 'L2': 'R2', 'L3': 'R3' };
+
+      // Iteration 4: L4 → R4
+      steps.push({
+        description: "Basic Matching Complete: Found maximum matching of 4 in 4 iterations. Each iteration found only 1 path.",
+        algorithm: 'basic-matching',
+        phase: 'complete',
+        currentPaths: [],
+        bfsLayers: {},
+        matching: { ...matching, 'L4': 'R4' },
+        iteration: 4,
+        totalIterations: 4,
+        pathsFoundThisPhase: 1,
+        complexity: "O(VE) - Total complexity",
+        currentLayer: 0,
+        highlightNodes: [],
+        highlightEdges: [
+          { from: 'L1', to: 'R1', type: 'matching' },
+          { from: 'L2', to: 'R2', type: 'matching' },
+          { from: 'L3', to: 'R3', type: 'matching' },
+          { from: 'L4', to: 'R4', type: 'matching' }
+        ]
+      });
+
+      return steps;
+    };
+
+    const steps = algorithm === 'hopcroft-karp' ? getHopcroftKarpSteps() : getBasicMatchingSteps();
+    const currentStep = hopcroftKarpComparisonStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawGraph = (canvas: HTMLCanvasElement, step: BipartiteMatchingStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set up canvas
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+
+      // Draw bipartite graph edges
+      graphEdges.forEach(edge => {
+        const fromNode = allNodes.find(n => n.id === edge.from)!;
+        const toNode = allNodes.find(n => n.id === edge.to)!;
+        
+        const highlightEdge = step.highlightEdges.find(e => e.from === edge.from && e.to === edge.to);
+        
+        // Set edge style based on type
+        if (highlightEdge) {
+          if (highlightEdge.type === 'matching') {
+            ctx.strokeStyle = '#059669';
+            ctx.lineWidth = 4;
+          } else if (highlightEdge.type === 'augmenting') {
+            ctx.strokeStyle = step.algorithm === 'hopcroft-karp' ? '#8b5cf6' : '#f59e0b';
+            ctx.lineWidth = 4;
+          } else if (highlightEdge.type === 'layer') {
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+          }
+        } else {
+          ctx.strokeStyle = '#d1d5db';
+          ctx.lineWidth = 2;
+        }
+
+        // Draw edge
+        ctx.beginPath();
+        ctx.moveTo(fromNode.x, fromNode.y);
+        ctx.lineTo(toNode.x, toNode.y);
+        ctx.stroke();
+
+        // Draw arrow for matching edges
+        if (highlightEdge && highlightEdge.type === 'matching') {
+          const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+          const arrowLength = 12;
+          const arrowAngle = Math.PI / 6;
+
+          const arrowX = toNode.x - Math.cos(angle) * 25;
+          const arrowY = toNode.y - Math.sin(angle) * 25;
+
+          ctx.beginPath();
+          ctx.moveTo(arrowX, arrowY);
+          ctx.lineTo(arrowX - arrowLength * Math.cos(angle - arrowAngle), arrowY - arrowLength * Math.sin(angle - arrowAngle));
+          ctx.moveTo(arrowX, arrowY);
+          ctx.lineTo(arrowX - arrowLength * Math.cos(angle + arrowAngle), arrowY - arrowLength * Math.sin(angle + arrowAngle));
+          ctx.stroke();
+        }
+      });
+
+      // Draw nodes
+      allNodes.forEach(node => {
+        const isHighlighted = step.highlightNodes.includes(node.id);
+        const isMatched = Object.values(step.matching).includes(node.id) || Object.keys(step.matching).includes(node.id);
+        const isLeft = node.id.startsWith('L');
+        
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+        
+        if (isHighlighted) {
+          ctx.fillStyle = step.algorithm === 'hopcroft-karp' ? '#8b5cf6' : '#f59e0b';
+        } else if (isMatched) {
+          ctx.fillStyle = '#059669';
+        } else if (isLeft) {
+          ctx.fillStyle = '#3b82f6';
+        } else {
+          ctx.fillStyle = '#ef4444';
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText(node.label, node.x, node.y + 4);
+      });
+
+      // Draw BFS layers visualization (for Hopcroft-Karp)
+      if (step.algorithm === 'hopcroft-karp' && Object.keys(step.bfsLayers).length > 0) {
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.1)';
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        
+        // Layer 0 (left nodes)
+        if (step.bfsLayers[0]) {
+          ctx.strokeRect(60, 60, 80, 220);
+          ctx.fillRect(60, 60, 80, 220);
+          ctx.fillStyle = '#8b5cf6';
+          ctx.font = 'bold 10px Arial';
+          ctx.fillText('Layer 0', 100, 50);
+        }
+        
+        // Layer 1 (right nodes)
+        if (step.bfsLayers[1]) {
+          ctx.fillStyle = 'rgba(139, 92, 246, 0.1)';
+          ctx.strokeRect(260, 60, 80, 220);
+          ctx.fillRect(260, 60, 80, 220);
+          ctx.fillStyle = '#8b5cf6';
+          ctx.font = 'bold 10px Arial';
+          ctx.fillText('Layer 1', 300, 50);
+        }
+        
+        ctx.setLineDash([]);
+      }
+
+      // Draw algorithm info panel
+      const infoX = 420;
+      const infoY = 20;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 300, 280);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 300, 280);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      const title = step.algorithm === 'hopcroft-karp' ? '🚀 Hopcroft-Karp' : '⚠️ Basic Bipartite Matching';
+      ctx.fillText(title, infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Phase/Iteration: ${step.iteration}/${step.totalIterations}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Paths found this phase: ${step.pathsFoundThisPhase}`, infoX + 10, infoY + 55);
+      
+      const matchingSize = Object.keys(step.matching).length;
+      ctx.fillText(`Current matching size: ${matchingSize}`, infoX + 10, infoY + 70);
+      
+      if (step.currentPaths.length > 0) {
+        ctx.fillText(`Current paths:`, infoX + 10, infoY + 85);
+        step.currentPaths.forEach((path, i) => {
+          ctx.fillText(`  ${path.join('→')}`, infoX + 10, infoY + 100 + i * 12);
+        });
+      }
+      
+      ctx.fillStyle = step.algorithm === 'hopcroft-karp' ? '#8b5cf6' : '#f59e0b';
+      ctx.fillText(`Complexity: ${step.complexity}`, infoX + 10, infoY + 160);
+      
+      // Key differences
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText('Key Differences:', infoX + 10, infoY + 185);
+      
+      ctx.font = '9px Arial';
+      if (step.algorithm === 'hopcroft-karp') {
+        ctx.fillStyle = '#8b5cf6';
+        ctx.fillText('✓ BFS layering finds shortest paths', infoX + 10, infoY + 200);
+        ctx.fillText('✓ Multiple paths found per phase', infoX + 10, infoY + 215);
+        ctx.fillText('✓ O(E√V) complexity', infoX + 10, infoY + 230);
+        ctx.fillText('✓ Fewer phases needed', infoX + 10, infoY + 245);
+      } else {
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('⚠ One path per iteration', infoX + 10, infoY + 200);
+        ctx.fillText('⚠ No layering optimization', infoX + 10, infoY + 215);
+        ctx.fillText('⚠ O(VE) complexity', infoX + 10, infoY + 230);
+        ctx.fillText('⚠ More iterations required', infoX + 10, infoY + 245);
+      }
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 265);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawGraph(canvas, step);
+    }, [currentStep, questionId, step, algorithm]);
+
+    return (
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-indigo-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-indigo-800 dark:text-indigo-200">
+            🎯 Hopcroft-Karp vs Basic Bipartite Matching
+          </h4>
+        </div>
+
+        {/* Algorithm Selection Buttons */}
+        <div className="flex justify-center mb-4 space-x-3">
+          <button
+            onClick={() => {
+              setSelectedBipartiteAlgorithm(prev => ({ ...prev, [questionId]: 'hopcroft-karp' }));
+              setHopcroftKarpComparisonStep(prev => ({ ...prev, [questionId]: 0 }));
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              algorithm === 'hopcroft-karp'
+                ? 'bg-purple-500 text-white shadow-lg'
+                : 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300'
+            }`}
+          >
+            🚀 Hopcroft-Karp (BFS Layering)
+          </button>
+          <button
+            onClick={() => {
+              setSelectedBipartiteAlgorithm(prev => ({ ...prev, [questionId]: 'basic-matching' }));
+              setHopcroftKarpComparisonStep(prev => ({ ...prev, [questionId]: 0 }));
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              algorithm === 'basic-matching'
+                ? 'bg-amber-500 text-white shadow-lg'
+                : 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900 dark:hover:bg-amber-800 text-amber-700 dark:text-amber-300'
+            }`}
+          >
+            ⚠️ Basic Matching (One Path)
+          </button>
+        </div>
+        
+        <canvas
+          ref={canvasRef}
+          width={740}
+          height={320}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1).replace('-', ' ')}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-center items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setHopcroftKarpComparisonStep(prev => ({
+                ...prev,
+                [questionId]: 0
+              }))}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium transition-colors"
+            >
+              ↺ Reset
+            </button>
+            <button
+              onClick={() => setHopcroftKarpComparisonStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === 0}
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setHopcroftKarpComparisonStep(prev => ({
+                ...prev,
+                [questionId]: Math.min(steps.length - 1, (prev[questionId] || 0) + 1)
+              }))}
+              className="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === steps.length - 1}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Image Segmentation Max-Flow Visualization Component
+  interface ImageSegmentationStep {
+    description: string;
+    phase: 'image-setup' | 'network-construction' | 'seed-connection' | 'pixel-edges' | 'max-flow' | 'min-cut' | 'segmentation';
+    image: number[][];
+    foregroundSeeds: [number, number][];
+    backgroundSeeds: [number, number][];
+    flowNetwork: { [key: string]: { [key: string]: number } };
+    currentFlow: number;
+    segmentation: string[][];
+    highlightPixels: [number, number][];
+    highlightEdges: { from: [number, number]; to: [number, number]; capacity: number; type: 'seed' | 'pixel' | 'cut' }[];
+    cutEdges: { from: [number, number]; to: [number, number] }[];
+  }
+
+  const ImageSegmentationVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // 4x4 sample image with clear foreground/background regions
+    const sampleImage = [
+      [100, 120, 200, 220],  // Dark region → Light region
+      [110, 130, 210, 230],
+      [105, 125, 205, 225], 
+      [115, 135, 215, 235]
+    ];
+
+    const foregroundSeeds: [number, number][] = [[0, 0], [1, 1]];  // Dark region
+    const backgroundSeeds: [number, number][] = [[0, 3], [1, 2]];  // Light region
+
+    const getAnimationSteps = (): ImageSegmentationStep[] => {
+      const steps: ImageSegmentationStep[] = [];
+
+      // Step 1: Show original image with seeds
+      steps.push({
+        description: "Image Segmentation Setup: 4×4 grayscale image with user-marked seeds. Green = foreground seeds, Red = background seeds.",
+        phase: 'image-setup',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 0,
+        segmentation: [],
+        highlightPixels: [...foregroundSeeds, ...backgroundSeeds],
+        highlightEdges: [],
+        cutEdges: []
+      });
+
+      // Step 2: Network construction - add source and sink
+      steps.push({
+        description: "Network Construction: Create flow network with source (S) and sink (T). Each pixel becomes a node in the graph.",
+        phase: 'network-construction',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 0,
+        segmentation: [],
+        highlightPixels: [],
+        highlightEdges: [],
+        cutEdges: []
+      });
+
+      // Step 3: Connect seeds to source/sink
+      steps.push({
+        description: "Seed Connections: Connect source to foreground seeds (∞ capacity) and background seeds to sink (∞ capacity). This forces seeds to stay in their respective regions.",
+        phase: 'seed-connection',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 0,
+        segmentation: [],
+        highlightPixels: [...foregroundSeeds, ...backgroundSeeds],
+        highlightEdges: [
+          ...foregroundSeeds.map(seed => ({ from: [-1, -1] as [number, number], to: seed, capacity: Infinity, type: 'seed' as const })),
+          ...backgroundSeeds.map(seed => ({ from: seed, to: [-1, -2] as [number, number], capacity: Infinity, type: 'seed' as const }))
+        ],
+        cutEdges: []
+      });
+
+      // Step 4: Add pixel-to-pixel edges
+      const pixelEdges: { from: [number, number]; to: [number, number]; capacity: number; type: 'pixel' }[] = [];
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          for (const [di, dj] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+            const ni = i + di, nj = j + dj;
+            if (ni >= 0 && ni < 4 && nj >= 0 && nj < 4) {
+              const similarity = 255 - Math.abs(sampleImage[i][j] - sampleImage[ni][nj]);
+              pixelEdges.push({ from: [i, j], to: [ni, nj], capacity: similarity, type: 'pixel' });
+            }
+          }
+        }
+      }
+
+      steps.push({
+        description: "Pixel Edges: Connect adjacent pixels with capacity = 255 - |intensity_difference|. High similarity = high capacity = less likely to cut.",
+        phase: 'pixel-edges',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 0,
+        segmentation: [],
+        highlightPixels: [],
+        highlightEdges: pixelEdges.slice(0, 8), // Show first few edges for clarity
+        cutEdges: []
+      });
+
+      // Step 5: Run max flow
+      steps.push({
+        description: "Max Flow: Run Edmonds-Karp to find maximum flow from source to sink. Flow value represents the minimum cut capacity.",
+        phase: 'max-flow',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 235, // Calculated based on the boundary
+        segmentation: [],
+        highlightPixels: [],
+        highlightEdges: [],
+        cutEdges: []
+      });
+
+      // Step 6: Find min cut
+      const cutEdges = [
+        { from: [0, 1] as [number, number], to: [0, 2] as [number, number] },
+        { from: [1, 1] as [number, number], to: [1, 2] as [number, number] },
+        { from: [2, 1] as [number, number], to: [2, 2] as [number, number] },
+        { from: [3, 1] as [number, number], to: [3, 2] as [number, number] }
+      ];
+
+      steps.push({
+        description: "Min Cut: Find minimum cut in residual graph. Cut edges (shown in red) separate foreground from background optimally.",
+        phase: 'min-cut',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 235,
+        segmentation: [],
+        highlightPixels: [],
+        highlightEdges: cutEdges.map(edge => ({ ...edge, capacity: 0, type: 'cut' as const })),
+        cutEdges
+      });
+
+      // Step 7: Final segmentation
+      const segmentation = [
+        ['F', 'F', 'B', 'B'],
+        ['F', 'F', 'B', 'B'],
+        ['F', 'F', 'B', 'B'],
+        ['F', 'F', 'B', 'B']
+      ];
+
+      steps.push({
+        description: "Segmentation Result: Pixels reachable from source = Foreground (F), others = Background (B). Min-cut gives optimal boundary!",
+        phase: 'segmentation',
+        image: sampleImage,
+        foregroundSeeds,
+        backgroundSeeds,
+        flowNetwork: {},
+        currentFlow: 235,
+        segmentation,
+        highlightPixels: [],
+        highlightEdges: [],
+        cutEdges
+      });
+
+      return steps;
+    };
+
+    const steps = getAnimationSteps();
+    const currentStep = imageSegmentationStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawVisualization = (canvas: HTMLCanvasElement, step: ImageSegmentationStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const pixelSize = 60;
+      const imageStartX = 50;
+      const imageStartY = 50;
+
+      // Draw image grid
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          const x = imageStartX + j * pixelSize;
+          const y = imageStartY + i * pixelSize;
+          
+          // Pixel background based on intensity
+          const intensity = step.image[i][j];
+          const grayValue = Math.floor((intensity / 255) * 255);
+          ctx.fillStyle = `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
+          ctx.fillRect(x, y, pixelSize, pixelSize);
+
+          // Pixel border
+          ctx.strokeStyle = '#333';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, pixelSize, pixelSize);
+
+          // Pixel value
+          ctx.fillStyle = intensity < 150 ? '#fff' : '#000';
+          ctx.font = 'bold 12px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(intensity.toString(), x + pixelSize/2, y + pixelSize/2 - 10);
+          ctx.fillText(`(${i},${j})`, x + pixelSize/2, y + pixelSize/2 + 10);
+
+          // Segmentation result
+          if (step.segmentation.length > 0) {
+            ctx.fillStyle = step.segmentation[i][j] === 'F' ? '#22c55e' : '#ef4444';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(step.segmentation[i][j], x + pixelSize/2, y + pixelSize/2 + 25);
+          }
+        }
+      }
+
+      // Highlight pixels
+      step.highlightPixels.forEach(([i, j]) => {
+        const x = imageStartX + j * pixelSize;
+        const y = imageStartY + i * pixelSize;
+        
+        const isForeground = step.foregroundSeeds.some(([fi, fj]) => fi === i && fj === j);
+        ctx.strokeStyle = isForeground ? '#22c55e' : '#ef4444';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x - 2, y - 2, pixelSize + 4, pixelSize + 4);
+      });
+
+      // Draw edges
+      step.highlightEdges.forEach(edge => {
+        if (edge.from[0] === -1) return; // Skip source connections for now
+        
+        const [i1, j1] = edge.from;
+        const [i2, j2] = edge.to;
+        
+        const x1 = imageStartX + j1 * pixelSize + pixelSize/2;
+        const y1 = imageStartY + i1 * pixelSize + pixelSize/2;
+        const x2 = imageStartX + j2 * pixelSize + pixelSize/2;
+        const y2 = imageStartY + i2 * pixelSize + pixelSize/2;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        
+        if (edge.type === 'cut') {
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 4;
+        } else if (edge.type === 'seed') {
+          ctx.strokeStyle = '#8b5cf6';
+          ctx.lineWidth = 3;
+        } else {
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 2;
+        }
+        ctx.stroke();
+
+        // Edge capacity label
+        if (edge.capacity !== Infinity && edge.type !== 'cut') {
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(midX - 10, midY - 8, 20, 16);
+          ctx.fillStyle = '#000';
+          ctx.font = '10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(edge.capacity.toString(), midX, midY + 3);
+        }
+      });
+
+      // Draw cut edges
+      step.cutEdges.forEach(edge => {
+        const [i1, j1] = edge.from;
+        const [i2, j2] = edge.to;
+        
+        const x1 = imageStartX + j1 * pixelSize + pixelSize/2;
+        const y1 = imageStartY + i1 * pixelSize + pixelSize/2;
+        const x2 = imageStartX + j2 * pixelSize + pixelSize/2;
+        const y2 = imageStartY + i2 * pixelSize + pixelSize/2;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Cut symbol
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('✂', midX, midY + 5);
+      });
+
+      // Draw source and sink (when relevant)
+      if (step.phase === 'network-construction' || step.phase === 'seed-connection') {
+        // Source
+        ctx.beginPath();
+        ctx.arc(imageStartX - 80, imageStartY + 120, 25, 0, 2 * Math.PI);
+        ctx.fillStyle = '#22c55e';
+        ctx.fill();
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('S', imageStartX - 80, imageStartY + 125);
+
+        // Sink
+        ctx.beginPath();
+        ctx.arc(imageStartX + 320, imageStartY + 120, 25, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('T', imageStartX + 320, imageStartY + 125);
+      }
+
+      // Draw info panel
+      const infoX = 400;
+      const infoY = 50;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 320, 240);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 320, 240);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('🖼️ Image Segmentation Max-Flow', infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Phase: ${step.phase.replace('-', ' ').toUpperCase()}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Image size: 4×4 pixels`, infoX + 10, infoY + 55);
+      ctx.fillText(`Foreground seeds: ${step.foregroundSeeds.length}`, infoX + 10, infoY + 70);
+      ctx.fillText(`Background seeds: ${step.backgroundSeeds.length}`, infoX + 10, infoY + 85);
+      
+      if (step.currentFlow > 0) {
+        ctx.fillText(`Max flow value: ${step.currentFlow}`, infoX + 10, infoY + 100);
+      }
+
+      // Key concepts
+      ctx.fillStyle = '#8b5cf6';
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText('Key Concepts:', infoX + 10, infoY + 125);
+      
+      ctx.font = '9px Arial';
+      ctx.fillStyle = '#1f2937';
+      ctx.fillText('• Each pixel = graph node', infoX + 10, infoY + 140);
+      ctx.fillText('• Edge capacity = pixel similarity', infoX + 10, infoY + 155);
+      ctx.fillText('• High similarity = high capacity', infoX + 10, infoY + 170);
+      ctx.fillText('• Min-cut = optimal boundary', infoX + 10, infoY + 185);
+      ctx.fillText('• Source connects to foreground', infoX + 10, infoY + 200);
+      ctx.fillText('• Background connects to sink', infoX + 10, infoY + 215);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 235);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawVisualization(canvas, step);
+    }, [currentStep, questionId, step]);
+
+    return (
+      <div className="bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-green-800 dark:text-green-200">
+            🖼️ Image Segmentation using Max-Flow Min-Cut
+          </h4>
+        </div>
+        
+        <canvas
+          ref={canvasRef}
+          width={740}
+          height={320}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-green-600 dark:text-green-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1).replace('-', ' ')}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-center items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setImageSegmentationStep(prev => ({
+                ...prev,
+                [questionId]: 0
+              }))}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium transition-colors"
+            >
+              ↺ Reset
+            </button>
+            <button
+              onClick={() => setImageSegmentationStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === 0}
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setImageSegmentationStep(prev => ({
+                ...prev,
+                [questionId]: Math.min(steps.length - 1, (prev[questionId] || 0) + 1)
+              }))}
+              className="px-3 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === steps.length - 1}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Dinic's vs Edmonds-Karp Comparison Visualization Component
+  interface MaxFlowComparisonStep {
+    description: string;
+    algorithm: 'dinic' | 'edmonds-karp';
+    phase: 'initialization' | 'level-graph' | 'blocking-flow' | 'single-path' | 'flow-update' | 'complete';
+    levelGraph: { [node: string]: number };
+    currentPaths: string[][];
+    residualGraph: { [from: string]: { [to: string]: number } };
+    iteration: number;
+    totalIterations: number;
+    currentFlow: number;
+    totalFlow: number;
+    complexity: string;
+    highlightNodes: string[];
+    highlightEdges: { from: string; to: string; type: 'level' | 'path' | 'blocking' | 'residual' }[];
+    pathsInPhase: number;
+  }
+
+  const DinicComparisonVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const algorithm = selectedMaxFlowAlgorithm[questionId] || 'dinic';
+
+    // Flow network: Source(S) -> Intermediate nodes -> Sink(T)
+    const nodePositions = [
+      { id: 'S', x: 80, y: 150, label: 'S' },   // Source
+      { id: 'A', x: 200, y: 100, label: 'A' },
+      { id: 'B', x: 200, y: 200, label: 'B' },
+      { id: 'C', x: 320, y: 100, label: 'C' },
+      { id: 'D', x: 320, y: 200, label: 'D' },
+      { id: 'T', x: 440, y: 150, label: 'T' }   // Sink
+    ];
+
+    const initialCapacities = {
+      'S': { 'A': 10, 'B': 10 },
+      'A': { 'C': 25, 'D': 6 },
+      'B': { 'A': 6, 'D': 10 },
+      'C': { 'T': 10 },
+      'D': { 'C': 6, 'T': 10 }
+    };
+
+    const getDinicSteps = (): MaxFlowComparisonStep[] => {
+      const steps: MaxFlowComparisonStep[] = [];
+
+      // Phase 1: Initialize
+      steps.push({
+        description: "Dinic's Algorithm: Initialize. Key optimization: Build level graphs and find blocking flows.",
+        algorithm: 'dinic',
+        phase: 'initialization',
+        levelGraph: {},
+        currentPaths: [],
+        residualGraph: initialCapacities,
+        iteration: 0,
+        totalIterations: 2,
+        currentFlow: 0,
+        totalFlow: 0,
+        complexity: "O(V²E) - Level graphs reduce iterations",
+        highlightNodes: [],
+        highlightEdges: [],
+        pathsInPhase: 0
+      });
+
+      // Phase 1: Build level graph
+      steps.push({
+        description: "Phase 1 - Build Level Graph: BFS assigns levels to all reachable nodes. Level 0: S, Level 1: A,B, Level 2: C,D, Level 3: T.",
+        algorithm: 'dinic',
+        phase: 'level-graph',
+        levelGraph: { 'S': 0, 'A': 1, 'B': 1, 'C': 2, 'D': 2, 'T': 3 },
+        currentPaths: [],
+        residualGraph: initialCapacities,
+        iteration: 1,
+        totalIterations: 2,
+        currentFlow: 0,
+        totalFlow: 0,
+        complexity: "O(V + E) - BFS for level graph",
+        highlightNodes: ['S', 'A', 'B', 'C', 'D', 'T'],
+        highlightEdges: [
+          { from: 'S', to: 'A', type: 'level' },
+          { from: 'S', to: 'B', type: 'level' },
+          { from: 'A', to: 'C', type: 'level' },
+          { from: 'A', to: 'D', type: 'level' },
+          { from: 'B', to: 'D', type: 'level' },
+          { from: 'C', to: 'T', type: 'level' },
+          { from: 'D', to: 'T', type: 'level' }
+        ],
+        pathsInPhase: 0
+      });
+
+      // Phase 1: Find blocking flow
+      steps.push({
+        description: "Blocking Flow: DFS finds multiple paths simultaneously in level graph. Found paths: S→A→C→T (10), S→A→D→T (6), S→B→D→T (4).",
+        algorithm: 'dinic',
+        phase: 'blocking-flow',
+        levelGraph: { 'S': 0, 'A': 1, 'B': 1, 'C': 2, 'D': 2, 'T': 3 },
+        currentPaths: [['S', 'A', 'C', 'T'], ['S', 'A', 'D', 'T'], ['S', 'B', 'D', 'T']],
+        residualGraph: initialCapacities,
+        iteration: 1,
+        totalIterations: 2,
+        currentFlow: 20,
+        totalFlow: 20,
+        complexity: "O(VE) - DFS for blocking flow",
+        highlightNodes: ['S', 'A', 'B', 'C', 'D', 'T'],
+        highlightEdges: [
+          { from: 'S', to: 'A', type: 'blocking' },
+          { from: 'S', to: 'B', type: 'blocking' },
+          { from: 'A', to: 'C', type: 'blocking' },
+          { from: 'A', to: 'D', type: 'blocking' },
+          { from: 'B', to: 'D', type: 'blocking' },
+          { from: 'C', to: 'T', type: 'blocking' },
+          { from: 'D', to: 'T', type: 'blocking' }
+        ],
+        pathsInPhase: 3
+      });
+
+      // Phase 2: Build new level graph
+      const residualAfterPhase1 = {
+        'S': { 'A': 0, 'B': 6 },
+        'A': { 'C': 15, 'D': 0 },
+        'B': { 'A': 6, 'D': 6 },
+        'C': { 'T': 0 },
+        'D': { 'C': 6, 'T': 0 }
+      };
+
+      steps.push({
+        description: "Phase 2 - New Level Graph: After blocking flow, build new level graph. Only S→B→A→C→D path remains with different levels.",
+        algorithm: 'dinic',
+        phase: 'level-graph',
+        levelGraph: { 'S': 0, 'B': 1, 'A': 2, 'C': 3, 'D': 4 },
+        currentPaths: [],
+        residualGraph: residualAfterPhase1,
+        iteration: 2,
+        totalIterations: 2,
+        currentFlow: 0,
+        totalFlow: 20,
+        complexity: "O(V + E) - BFS for new level graph",
+        highlightNodes: ['S', 'B', 'A', 'C', 'D'],
+        highlightEdges: [
+          { from: 'S', to: 'B', type: 'level' },
+          { from: 'B', to: 'A', type: 'level' },
+          { from: 'A', to: 'C', type: 'level' },
+          { from: 'D', to: 'C', type: 'level' }
+        ],
+        pathsInPhase: 0
+      });
+
+      steps.push({
+        description: "Dinic's Complete: Found maximum flow of 20 in just 2 phases! Level graphs enable processing multiple paths per phase.",
+        algorithm: 'dinic',
+        phase: 'complete',
+        levelGraph: {},
+        currentPaths: [],
+        residualGraph: residualAfterPhase1,
+        iteration: 2,
+        totalIterations: 2,
+        currentFlow: 0,
+        totalFlow: 20,
+        complexity: "O(V²E) - Total complexity",
+        highlightNodes: [],
+        highlightEdges: [],
+        pathsInPhase: 0
+      });
+
+      return steps;
+    };
+
+    const getEdmondsKarpSteps = (): MaxFlowComparisonStep[] => {
+      const steps: MaxFlowComparisonStep[] = [];
+
+      steps.push({
+        description: "Edmonds-Karp: Initialize. Finds one shortest augmenting path per iteration using BFS.",
+        algorithm: 'edmonds-karp',
+        phase: 'initialization',
+        levelGraph: {},
+        currentPaths: [],
+        residualGraph: initialCapacities,
+        iteration: 0,
+        totalIterations: 4,
+        currentFlow: 0,
+        totalFlow: 0,
+        complexity: "O(VE²) - One path per iteration",
+        highlightNodes: [],
+        highlightEdges: [],
+        pathsInPhase: 0
+      });
+
+      // Iteration 1: S→A→C→T
+      steps.push({
+        description: "Iteration 1: BFS finds shortest path S→A→C→T (length 3). Push flow of 10.",
+        algorithm: 'edmonds-karp',
+        phase: 'single-path',
+        levelGraph: {},
+        currentPaths: [['S', 'A', 'C', 'T']],
+        residualGraph: initialCapacities,
+        iteration: 1,
+        totalIterations: 4,
+        currentFlow: 10,
+        totalFlow: 10,
+        complexity: "O(V + E) - BFS for one path",
+        highlightNodes: ['S', 'A', 'C', 'T'],
+        highlightEdges: [
+          { from: 'S', to: 'A', type: 'path' },
+          { from: 'A', to: 'C', type: 'path' },
+          { from: 'C', to: 'T', type: 'path' }
+        ],
+        pathsInPhase: 1
+      });
+
+      // Iteration 2: S→A→D→T
+      steps.push({
+        description: "Iteration 2: BFS finds path S→A→D→T (length 3). Push flow of 6.",
+        algorithm: 'edmonds-karp',
+        phase: 'single-path',
+        levelGraph: {},
+        currentPaths: [['S', 'A', 'D', 'T']],
+        residualGraph: initialCapacities,
+        iteration: 2,
+        totalIterations: 4,
+        currentFlow: 6,
+        totalFlow: 16,
+        complexity: "O(V + E) - BFS for one path",
+        highlightNodes: ['S', 'A', 'D', 'T'],
+        highlightEdges: [
+          { from: 'S', to: 'A', type: 'path' },
+          { from: 'A', to: 'D', type: 'path' },
+          { from: 'D', to: 'T', type: 'path' }
+        ],
+        pathsInPhase: 1
+      });
+
+      // Iteration 3: S→B→D→T
+      steps.push({
+        description: "Iteration 3: BFS finds path S→B→D→T (length 3). Push flow of 4.",
+        algorithm: 'edmonds-karp',
+        phase: 'single-path',
+        levelGraph: {},
+        currentPaths: [['S', 'B', 'D', 'T']],
+        residualGraph: initialCapacities,
+        iteration: 3,
+        totalIterations: 4,
+        currentFlow: 4,
+        totalFlow: 20,
+        complexity: "O(V + E) - BFS for one path",
+        highlightNodes: ['S', 'B', 'D', 'T'],
+        highlightEdges: [
+          { from: 'S', to: 'B', type: 'path' },
+          { from: 'B', to: 'D', type: 'path' },
+          { from: 'D', to: 'T', type: 'path' }
+        ],
+        pathsInPhase: 1
+      });
+
+      steps.push({
+        description: "Edmonds-Karp Complete: Found maximum flow of 20 in 3 iterations. Each iteration processes only one path.",
+        algorithm: 'edmonds-karp',
+        phase: 'complete',
+        levelGraph: {},
+        currentPaths: [],
+        residualGraph: initialCapacities,
+        iteration: 3,
+        totalIterations: 3,
+        currentFlow: 0,
+        totalFlow: 20,
+        complexity: "O(VE²) - Total complexity",
+        highlightNodes: [],
+        highlightEdges: [],
+        pathsInPhase: 0
+      });
+
+      return steps;
+    };
+
+    const steps = algorithm === 'dinic' ? getDinicSteps() : getEdmondsKarpSteps();
+    const currentStep = dinicComparisonStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawGraph = (canvas: HTMLCanvasElement, step: MaxFlowComparisonStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set up canvas
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+
+      // Draw edges
+      const allEdges = [
+        { from: 'S', to: 'A' }, { from: 'S', to: 'B' },
+        { from: 'A', to: 'C' }, { from: 'A', to: 'D' },
+        { from: 'B', to: 'A' }, { from: 'B', to: 'D' },
+        { from: 'C', to: 'T' }, { from: 'D', to: 'C' }, { from: 'D', to: 'T' }
+      ];
+
+      allEdges.forEach(edge => {
+        const fromNode = nodePositions.find(n => n.id === edge.from)!;
+        const toNode = nodePositions.find(n => n.id === edge.to)!;
+        
+        const highlightEdge = step.highlightEdges.find(e => e.from === edge.from && e.to === edge.to);
+        
+        // Set edge style based on type
+        if (highlightEdge) {
+          if (highlightEdge.type === 'level') {
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+          } else if (highlightEdge.type === 'path') {
+            ctx.strokeStyle = step.algorithm === 'dinic' ? '#8b5cf6' : '#f59e0b';
+            ctx.lineWidth = 4;
+          } else if (highlightEdge.type === 'blocking') {
+            ctx.strokeStyle = '#8b5cf6';
+            ctx.lineWidth = 4;
+          }
+        } else {
+          ctx.strokeStyle = '#d1d5db';
+          ctx.lineWidth = 2;
+        }
+
+        // Draw edge
+        ctx.beginPath();
+        ctx.moveTo(fromNode.x, fromNode.y);
+        ctx.lineTo(toNode.x, toNode.y);
+        ctx.stroke();
+
+        // Draw arrow
+        const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+        const arrowLength = 12;
+        const arrowAngle = Math.PI / 6;
+
+        const arrowX = toNode.x - Math.cos(angle) * 25;
+        const arrowY = toNode.y - Math.sin(angle) * 25;
+
+        ctx.beginPath();
+        ctx.moveTo(arrowX, arrowY);
+        ctx.lineTo(arrowX - arrowLength * Math.cos(angle - arrowAngle), arrowY - arrowLength * Math.sin(angle - arrowAngle));
+        ctx.moveTo(arrowX, arrowY);
+        ctx.lineTo(arrowX - arrowLength * Math.cos(angle + arrowAngle), arrowY - arrowLength * Math.sin(angle + arrowAngle));
+        ctx.stroke();
+
+        // Draw capacity label
+        const midX = (fromNode.x + toNode.x) / 2;
+        const midY = (fromNode.y + toNode.y) / 2;
+        
+        const capacity = (initialCapacities as any)[edge.from]?.[edge.to] || 0;
+        if (capacity > 0) {
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(midX - 8, midY - 8, 16, 16);
+          ctx.fillStyle = highlightEdge ? (step.algorithm === 'dinic' ? '#8b5cf6' : '#f59e0b') : '#1f2937';
+          ctx.font = 'bold 10px Arial';
+          ctx.fillText(capacity.toString(), midX, midY + 3);
+        }
+      });
+
+      // Draw nodes
+      nodePositions.forEach(node => {
+        const isHighlighted = step.highlightNodes.includes(node.id);
+        const isSource = node.id === 'S';
+        const isSink = node.id === 'T';
+        
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+        
+        if (isSource) {
+          ctx.fillStyle = '#22c55e';
+        } else if (isSink) {
+          ctx.fillStyle = '#ef4444';
+        } else if (isHighlighted) {
+          ctx.fillStyle = step.algorithm === 'dinic' ? '#8b5cf6' : '#f59e0b';
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = (isSource || isSink || isHighlighted) ? '#ffffff' : '#374151';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(node.label, node.x, node.y + 5);
+
+        // Level label for Dinic's algorithm
+        if (step.algorithm === 'dinic' && step.levelGraph[node.id] !== undefined) {
+          ctx.fillStyle = '#3b82f6';
+          ctx.font = 'bold 10px Arial';
+          ctx.fillText(`L${step.levelGraph[node.id]}`, node.x, node.y - 30);
+        }
+      });
+
+      // Draw algorithm comparison info panel
+      const infoX = 540;
+      const infoY = 20;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 280, 280);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 280, 280);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      const title = step.algorithm === 'dinic' ? '🚀 Dinic\'s Algorithm' : '⚠️ Edmonds-Karp';
+      ctx.fillText(title, infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Phase/Iteration: ${step.iteration}/${step.totalIterations}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Paths in this phase: ${step.pathsInPhase}`, infoX + 10, infoY + 55);
+      
+      if (step.currentFlow > 0) {
+        ctx.fillText(`Current flow: ${step.currentFlow}`, infoX + 10, infoY + 70);
+      }
+      ctx.fillText(`Total flow: ${step.totalFlow}`, infoX + 10, infoY + 85);
+      
+      if (step.currentPaths.length > 0) {
+        ctx.fillText(`Current paths:`, infoX + 10, infoY + 105);
+        step.currentPaths.forEach((path, i) => {
+          ctx.fillText(`  ${path.join('→')}`, infoX + 10, infoY + 120 + i * 12);
+        });
+      }
+      
+      ctx.fillStyle = step.algorithm === 'dinic' ? '#8b5cf6' : '#f59e0b';
+      ctx.fillText(`Complexity: ${step.complexity}`, infoX + 10, infoY + 170);
+      
+      // Key differences
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 10px Arial';
+      ctx.fillText('Key Differences:', infoX + 10, infoY + 195);
+      
+      ctx.font = '9px Arial';
+      if (step.algorithm === 'dinic') {
+        ctx.fillStyle = '#8b5cf6';
+        ctx.fillText('✓ Level graphs organize nodes by distance', infoX + 10, infoY + 210);
+        ctx.fillText('✓ Blocking flow finds multiple paths', infoX + 10, infoY + 225);
+        ctx.fillText('✓ Current edge optimization', infoX + 10, infoY + 240);
+        ctx.fillText('✓ O(V²E) complexity', infoX + 10, infoY + 255);
+      } else {
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('⚠ One shortest path per iteration', infoX + 10, infoY + 210);
+        ctx.fillText('⚠ No level graph optimization', infoX + 10, infoY + 225);
+        ctx.fillText('⚠ More iterations needed', infoX + 10, infoY + 240);
+        ctx.fillText('⚠ O(VE²) complexity', infoX + 10, infoY + 255);
+      }
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 275);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawGraph(canvas, step);
+    }, [currentStep, questionId, step, algorithm]);
+
+    return (
+      <div className="bg-gradient-to-br from-purple-50 to-orange-50 dark:from-purple-900/20 dark:to-orange-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-purple-800 dark:text-purple-200">
+            ⚡ Dinic's vs Edmonds-Karp Comparison
+          </h4>
+        </div>
+
+        {/* Algorithm Selection Buttons */}
+        <div className="flex justify-center mb-4 space-x-3">
+          <button
+            onClick={() => {
+              setSelectedMaxFlowAlgorithm(prev => ({ ...prev, [questionId]: 'dinic' }));
+              setDinicComparisonStep(prev => ({ ...prev, [questionId]: 0 }));
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              algorithm === 'dinic'
+                ? 'bg-purple-500 text-white shadow-lg'
+                : 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300'
+            }`}
+          >
+            🚀 Dinic's (Level Graph + Blocking Flow)
+          </button>
+          <button
+            onClick={() => {
+              setSelectedMaxFlowAlgorithm(prev => ({ ...prev, [questionId]: 'edmonds-karp' }));
+              setDinicComparisonStep(prev => ({ ...prev, [questionId]: 0 }));
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              algorithm === 'edmonds-karp'
+                ? 'bg-orange-500 text-white shadow-lg'
+                : 'bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-700 dark:text-orange-300'
+            }`}
+          >
+            ⚠️ Edmonds-Karp (Single Path BFS)
+          </button>
+        </div>
+        
+        <canvas
+          ref={canvasRef}
+          width={840}
+          height={320}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-purple-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-purple-600 dark:text-purple-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1).replace('-', ' ')}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-center items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setDinicComparisonStep(prev => ({
+                ...prev,
+                [questionId]: 0
+              }))}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium transition-colors"
+            >
+              ↺ Reset
+            </button>
+            <button
+              onClick={() => setDinicComparisonStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === 0}
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setDinicComparisonStep(prev => ({
+                ...prev,
+                [questionId]: Math.min(steps.length - 1, (prev[questionId] || 0) + 1)
+              }))}
+              className="px-3 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === steps.length - 1}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Push-Relabel Visualization Component
+  interface PushRelabelAnimationStep {
+    description: string;
+    phase: 'initialization' | 'push' | 'relabel' | 'complete';
+    activeVertex: string | null;
+    excess: { [node: string]: number };
+    height: { [node: string]: number };
+    residualCapacities: { [from: string]: { [to: string]: number } };
+    currentFlow: { [from: string]: { [to: string]: number } };
+    operation: 'none' | 'push' | 'relabel';
+    operationDetails: {
+      from?: string;
+      to?: string;
+      amount?: number;
+      newHeight?: number;
+    };
+    iteration: number;
+    totalIterations: number;
+    maxFlow: number;
+    highlightNodes: string[];
+    highlightEdges: { from: string; to: string; type: 'admissible' | 'push' | 'residual' }[];
+  }
+
+  const PushRelabelVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    // Flow network: Simple 4-node network for clear demonstration
+    const nodePositions = [
+      { id: 'S', x: 80, y: 150, label: 'S' },   // Source
+      { id: 'A', x: 200, y: 100, label: 'A' },
+      { id: 'B', x: 200, y: 200, label: 'B' },
+      { id: 'T', x: 320, y: 150, label: 'T' }   // Sink
+    ];
+
+    const initialCapacities = {
+      'S': { 'A': 10, 'B': 10 },
+      'A': { 'T': 10 },
+      'B': { 'A': 1, 'T': 10 }
+    };
+
+    const getAnimationSteps = (): PushRelabelAnimationStep[] => {
+      const steps: PushRelabelAnimationStep[] = [];
+
+      // Step 1: Initialization
+      steps.push({
+        description: "Initialize: Set source height = n (4), push maximum flow from source to create excess at neighbors.",
+        phase: 'initialization',
+        activeVertex: 'S',
+        excess: { 'S': 0, 'A': 10, 'B': 10, 'T': 0 },
+        height: { 'S': 4, 'A': 0, 'B': 0, 'T': 0 },
+        residualCapacities: {
+          'S': { 'A': 0, 'B': 0 },
+          'A': { 'S': 10, 'T': 10 },
+          'B': { 'S': 10, 'A': 1, 'T': 10 }
+        },
+        currentFlow: {
+          'S': { 'A': 10, 'B': 10 },
+          'A': { 'S': 0, 'T': 0 },
+          'B': { 'S': 0, 'A': 0, 'T': 0 }
+        },
+        operation: 'none',
+        operationDetails: {},
+        iteration: 0,
+        totalIterations: 6,
+        maxFlow: 0,
+        highlightNodes: ['S'],
+        highlightEdges: []
+      });
+
+      // Step 2: Push from A to T
+      steps.push({
+        description: "PUSH Operation: A has excess (10) and admissible edge A→T (height[A]=0, height[T]=0, but we'll relabel first).",
+        phase: 'relabel',
+        activeVertex: 'A',
+        excess: { 'S': 0, 'A': 10, 'B': 10, 'T': 0 },
+        height: { 'S': 4, 'A': 1, 'B': 0, 'T': 0 },
+        residualCapacities: {
+          'S': { 'A': 0, 'B': 0 },
+          'A': { 'S': 10, 'T': 10 },
+          'B': { 'S': 10, 'A': 1, 'T': 10 }
+        },
+        currentFlow: {
+          'S': { 'A': 10, 'B': 10 },
+          'A': { 'S': 0, 'T': 0 },
+          'B': { 'S': 0, 'A': 0, 'T': 0 }
+        },
+        operation: 'relabel',
+        operationDetails: { newHeight: 1 },
+        iteration: 1,
+        totalIterations: 6,
+        maxFlow: 0,
+        highlightNodes: ['A'],
+        highlightEdges: []
+      });
+
+      // Step 3: Push from A to T
+      steps.push({
+        description: "PUSH Operation: A→T is now admissible (height[A]=1, height[T]=0). Push min(excess[A], capacity[A][T]) = min(10, 10) = 10.",
+        phase: 'push',
+        activeVertex: 'A',
+        excess: { 'S': 0, 'A': 0, 'B': 10, 'T': 10 },
+        height: { 'S': 4, 'A': 1, 'B': 0, 'T': 0 },
+        residualCapacities: {
+          'S': { 'A': 0, 'B': 0 },
+          'A': { 'S': 10, 'T': 0 },
+          'B': { 'S': 10, 'A': 1, 'T': 10 },
+          'T': { 'A': 10 }
+        },
+        currentFlow: {
+          'S': { 'A': 10, 'B': 10 },
+          'A': { 'S': 0, 'T': 10 },
+          'B': { 'S': 0, 'A': 0, 'T': 0 }
+        },
+        operation: 'push',
+        operationDetails: { from: 'A', to: 'T', amount: 10 },
+        iteration: 2,
+        totalIterations: 6,
+        maxFlow: 10,
+        highlightNodes: ['A', 'T'],
+        highlightEdges: [{ from: 'A', to: 'T', type: 'push' }]
+      });
+
+      // Step 4: Relabel B (no admissible edges)
+      steps.push({
+        description: "RELABEL Operation: B has excess (10) but no admissible edges. B→T: height[B]=0, height[T]=0 (not admissible). Relabel B.",
+        phase: 'relabel',
+        activeVertex: 'B',
+        excess: { 'S': 0, 'A': 0, 'B': 10, 'T': 10 },
+        height: { 'S': 4, 'A': 1, 'B': 1, 'T': 0 },
+        residualCapacities: {
+          'S': { 'A': 0, 'B': 0 },
+          'A': { 'S': 10, 'T': 0 },
+          'B': { 'S': 10, 'A': 1, 'T': 10 },
+          'T': { 'A': 10 }
+        },
+        currentFlow: {
+          'S': { 'A': 10, 'B': 10 },
+          'A': { 'S': 0, 'T': 10 },
+          'B': { 'S': 0, 'A': 0, 'T': 0 }
+        },
+        operation: 'relabel',
+        operationDetails: { newHeight: 1 },
+        iteration: 3,
+        totalIterations: 6,
+        maxFlow: 10,
+        highlightNodes: ['B'],
+        highlightEdges: []
+      });
+
+      // Step 5: Push from B to T
+      steps.push({
+        description: "PUSH Operation: B→T is now admissible (height[B]=1, height[T]=0). Push min(excess[B], capacity[B][T]) = min(10, 10) = 10.",
+        phase: 'push',
+        activeVertex: 'B',
+        excess: { 'S': 0, 'A': 0, 'B': 0, 'T': 20 },
+        height: { 'S': 4, 'A': 1, 'B': 1, 'T': 0 },
+        residualCapacities: {
+          'S': { 'A': 0, 'B': 0 },
+          'A': { 'S': 10, 'T': 0 },
+          'B': { 'S': 10, 'A': 1, 'T': 0 },
+          'T': { 'A': 10, 'B': 10 }
+        },
+        currentFlow: {
+          'S': { 'A': 10, 'B': 10 },
+          'A': { 'S': 0, 'T': 10 },
+          'B': { 'S': 0, 'A': 0, 'T': 10 }
+        },
+        operation: 'push',
+        operationDetails: { from: 'B', to: 'T', amount: 10 },
+        iteration: 4,
+        totalIterations: 6,
+        maxFlow: 20,
+        highlightNodes: ['B', 'T'],
+        highlightEdges: [{ from: 'B', to: 'T', type: 'push' }]
+      });
+
+      // Step 6: Complete
+      steps.push({
+        description: "Algorithm Complete: No vertices have excess flow. Maximum flow = 20. Key insight: Local push/relabel operations achieve global optimum!",
+        phase: 'complete',
+        activeVertex: null,
+        excess: { 'S': 0, 'A': 0, 'B': 0, 'T': 20 },
+        height: { 'S': 4, 'A': 1, 'B': 1, 'T': 0 },
+        residualCapacities: {
+          'S': { 'A': 0, 'B': 0 },
+          'A': { 'S': 10, 'T': 0 },
+          'B': { 'S': 10, 'A': 1, 'T': 0 },
+          'T': { 'A': 10, 'B': 10 }
+        },
+        currentFlow: {
+          'S': { 'A': 10, 'B': 10 },
+          'A': { 'S': 0, 'T': 10 },
+          'B': { 'S': 0, 'A': 0, 'T': 10 }
+        },
+        operation: 'none',
+        operationDetails: {},
+        iteration: 5,
+        totalIterations: 5,
+        maxFlow: 20,
+        highlightNodes: [],
+        highlightEdges: []
+      });
+
+      return steps;
+    };
+
+    const steps = getAnimationSteps();
+    const currentStep = pushRelabelStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawGraph = (canvas: HTMLCanvasElement, step: PushRelabelAnimationStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set up canvas
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+
+      // Draw edges with residual capacities
+      const allEdges = [
+        { from: 'S', to: 'A' }, { from: 'S', to: 'B' },
+        { from: 'A', to: 'T' }, { from: 'B', to: 'A' }, { from: 'B', to: 'T' }
+      ];
+
+      allEdges.forEach(edge => {
+        const fromNode = nodePositions.find(n => n.id === edge.from)!;
+        const toNode = nodePositions.find(n => n.id === edge.to)!;
+        
+        const highlightEdge = step.highlightEdges.find(e => e.from === edge.from && e.to === edge.to);
+        const residualCap = step.residualCapacities[edge.from]?.[edge.to] || 0;
+        
+        // Only draw edges with positive residual capacity
+        if (residualCap > 0) {
+          // Set edge style
+          if (highlightEdge?.type === 'push') {
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+          } else if (highlightEdge?.type === 'admissible') {
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 3;
+          } else {
+            ctx.strokeStyle = '#6b7280';
+            ctx.lineWidth = 2;
+          }
+
+          // Draw edge
+          ctx.beginPath();
+          ctx.moveTo(fromNode.x, fromNode.y);
+          ctx.lineTo(toNode.x, toNode.y);
+          ctx.stroke();
+
+          // Draw arrow
+          const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+          const arrowLength = 12;
+          const arrowAngle = Math.PI / 6;
+
+          const arrowX = toNode.x - Math.cos(angle) * 25;
+          const arrowY = toNode.y - Math.sin(angle) * 25;
+
+          ctx.beginPath();
+          ctx.moveTo(arrowX, arrowY);
+          ctx.lineTo(arrowX - arrowLength * Math.cos(angle - arrowAngle), arrowY - arrowLength * Math.sin(angle - arrowAngle));
+          ctx.moveTo(arrowX, arrowY);
+          ctx.lineTo(arrowX - arrowLength * Math.cos(angle + arrowAngle), arrowY - arrowLength * Math.sin(angle + arrowAngle));
+          ctx.stroke();
+
+          // Draw residual capacity label
+          const midX = (fromNode.x + toNode.x) / 2;
+          const midY = (fromNode.y + toNode.y) / 2;
+          
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(midX - 8, midY - 8, 16, 16);
+          ctx.fillStyle = highlightEdge ? '#ef4444' : '#1f2937';
+          ctx.font = 'bold 10px Arial';
+          ctx.fillText(residualCap.toString(), midX, midY + 3);
+        }
+      });
+
+      // Draw nodes with excess and height
+      nodePositions.forEach(node => {
+        const isActive = step.activeVertex === node.id;
+        const isHighlighted = step.highlightNodes.includes(node.id);
+        const isSource = node.id === 'S';
+        const isSink = node.id === 'T';
+        const excess = step.excess[node.id] || 0;
+        const height = step.height[node.id] || 0;
+        
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 25, 0, 2 * Math.PI);
+        
+        if (isActive) {
+          ctx.fillStyle = '#f59e0b';
+        } else if (isSource) {
+          ctx.fillStyle = '#22c55e';
+        } else if (isSink) {
+          ctx.fillStyle = '#ef4444';
+        } else if (excess > 0) {
+          ctx.fillStyle = '#8b5cf6';
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = isActive ? '#f59e0b' : '#374151';
+        ctx.lineWidth = isActive ? 3 : 2;
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = (isSource || isSink || isActive || excess > 0) ? '#ffffff' : '#374151';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(node.label, node.x, node.y + 5);
+
+        // Height label (above node)
+        ctx.fillStyle = '#3b82f6';
+        ctx.font = 'bold 11px Arial';
+        ctx.fillText(`h=${height}`, node.x, node.y - 35);
+
+        // Excess label (below node)
+        if (excess > 0) {
+          ctx.fillStyle = '#8b5cf6';
+          ctx.font = 'bold 11px Arial';
+          ctx.fillText(`e=${excess}`, node.x, node.y + 40);
+        }
+      });
+
+      // Draw operation info panel
+      const infoX = 420;
+      const infoY = 20;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 300, 280);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 300, 280);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('🚀 Push-Relabel Algorithm', infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Iteration: ${step.iteration}/${step.totalIterations}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Phase: ${step.phase}`, infoX + 10, infoY + 55);
+      
+      if (step.activeVertex) {
+        ctx.fillText(`Active vertex: ${step.activeVertex}`, infoX + 10, infoY + 70);
+      }
+      
+      ctx.fillText(`Current max flow: ${step.maxFlow}`, infoX + 10, infoY + 85);
+      
+      // Operation details
+      if (step.operation !== 'none') {
+        ctx.fillStyle = step.operation === 'push' ? '#ef4444' : '#f59e0b';
+        ctx.font = 'bold 10px Arial';
+        ctx.fillText(`Operation: ${step.operation.toUpperCase()}`, infoX + 10, infoY + 105);
+        
+        ctx.font = '9px Arial';
+        if (step.operation === 'push' && step.operationDetails.from && step.operationDetails.to) {
+          ctx.fillText(`Push ${step.operationDetails.amount} from ${step.operationDetails.from} to ${step.operationDetails.to}`, infoX + 10, infoY + 120);
+        } else if (step.operation === 'relabel' && step.operationDetails.newHeight) {
+          ctx.fillText(`Relabel ${step.activeVertex} to height ${step.operationDetails.newHeight}`, infoX + 10, infoY + 120);
+        }
+      }
+      
+      // Vertex states
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 9px Arial';
+      ctx.fillText('Vertex States:', infoX + 10, infoY + 145);
+      
+      ctx.font = '8px Arial';
+      let yOffset = 160;
+      Object.keys(step.excess).forEach(vertex => {
+        const excess = step.excess[vertex];
+        const height = step.height[vertex];
+        ctx.fillStyle = excess > 0 ? '#8b5cf6' : '#6b7280';
+        ctx.fillText(`${vertex}: h=${height}, e=${excess}`, infoX + 10, infoY + yOffset);
+        yOffset += 12;
+      });
+      
+      // Key concepts
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 9px Arial';
+      ctx.fillText('Key Concepts:', infoX + 10, infoY + 220);
+      
+      ctx.font = '8px Arial';
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText('• PUSH: Move excess along admissible edges', infoX + 10, infoY + 235);
+      ctx.fillText('• RELABEL: Increase height when no push possible', infoX + 10, infoY + 248);
+      ctx.fillText('• Admissible: h[u] = h[v] + 1 & capacity > 0', infoX + 10, infoY + 261);
+      ctx.fillText('• Local operations achieve global optimum', infoX + 10, infoY + 274);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 290);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawGraph(canvas, step);
+    }, [currentStep, questionId, step]);
+
+    return (
+      <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-orange-800 dark:text-orange-200">
+            🚀 Push-Relabel Algorithm Walkthrough
+          </h4>
+        </div>
+        
+        <canvas
+          ref={canvasRef}
+          width={740}
+          height={320}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-orange-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-orange-600 dark:text-orange-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1)}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-center items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setPushRelabelStep(prev => ({
+                ...prev,
+                [questionId]: 0
+              }))}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-medium transition-colors"
+            >
+              ↺ Reset
+            </button>
+            <button
+              onClick={() => setPushRelabelStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-700 dark:text-orange-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === 0}
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setPushRelabelStep(prev => ({
+                ...prev,
+                [questionId]: Math.min(steps.length - 1, (prev[questionId] || 0) + 1)
+              }))}
+              className="px-3 py-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-700 dark:text-orange-300 rounded text-sm font-medium transition-colors"
+              disabled={currentStep === steps.length - 1}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Bridge Detection Optimization Visualization Component
+  interface BridgeOptimizationAnimationStep {
+    description: string;
+    phase: 'density-analysis' | 'matrix-traversal' | 'bridge-detection' | 'complete';
+    currentNode?: string;
+    visitedNodes: string[];
+    discoveryTime: { [key: string]: number };
+    lowLink: { [key: string]: number };
+    bridges: string[][];
+    edgeCount: number;
+    densityThreshold: number;
+    approach: 'dense' | 'sparse';
+    currentEdge?: string;
+    timestamp: number;
+    complexity: string;
+    memoryUsage: string;
+  }
+
+  const BridgeOptimizationVisualization = ({ questionId }: { questionId: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const animationRef = useRef<number | null>(null);
+    const [selectedExample, setSelectedExample] = useState<'dense' | 'sparse'>('dense');
+
+    // Dense graph example: A-B-C-A cycle with D-E connected to B (6 edges)
+    const denseGraph = {
+      'A': [60, 60],   'B': [160, 60],  'C': [110, 130],
+      'D': [220, 60],  'E': [220, 130]
+    };
+
+    const denseAdjMatrix = [
+      [0, 1, 1, 0, 0],  // A connects to B, C
+      [1, 0, 1, 1, 0],  // B connects to A, C, D  
+      [1, 1, 0, 0, 1],  // C connects to A, B, E
+      [0, 1, 0, 0, 1],  // D connects to B, E
+      [0, 0, 1, 1, 0]   // E connects to C, D
+    ];
+
+    // Sparse graph example: Simple path A-B-C with bridge B-C (3 edges)
+    const sparseGraph = {
+      'A': [60, 60],   'B': [160, 60],  'C': [260, 60],
+      'D': [60, 130],  'E': [160, 130]
+    };
+
+    const sparseAdjMatrix = [
+      [0, 1, 0, 1, 0],  // A connects to B, D
+      [1, 0, 1, 0, 0],  // B connects to A, C
+      [0, 1, 0, 0, 1],  // C connects to B, E
+      [1, 0, 0, 0, 0],  // D connects to A
+      [0, 0, 1, 0, 0]   // E connects to C
+    ];
+
+    const currentGraph = selectedExample === 'dense' ? denseGraph : sparseGraph;
+    const currentAdjMatrix = selectedExample === 'dense' ? denseAdjMatrix : sparseAdjMatrix;
+
+    const getAnimationSteps = (): BridgeOptimizationAnimationStep[] => {
+      const steps: BridgeOptimizationAnimationStep[] = [];
+      const n = 5;
+      let timestamp = 0;
+      const discoveryTime: { [key: string]: number } = {};
+      const lowLink: { [key: string]: number } = {};
+      const bridges: string[][] = [];
+
+      // Step 1: Density Analysis
+      const edgeCount = selectedExample === 'dense' ? 6 : 3; // Dense: A-B, A-C, B-C, B-D, C-E, D-E | Sparse: A-B, A-D, B-C, C-E
+      const densityThreshold = Math.floor(n * n / 4); // 6
+      const approach = edgeCount >= densityThreshold ? 'dense' : 'sparse';
+
+      steps.push({
+        description: selectedExample === 'dense' 
+          ? `Density Analysis: Graph has ${edgeCount} edges, threshold = n²/4 = ${n}²/4 = ${densityThreshold}. Since ${edgeCount} ≥ ${densityThreshold}, use DENSE approach with matrix + enumerate() optimization.`
+          : `Density Analysis: Graph has ${edgeCount} edges, threshold = n²/4 = ${n}²/4 = ${densityThreshold}. Since ${edgeCount} < ${densityThreshold}, use SPARSE approach with adjacency list conversion.`,
+        phase: 'density-analysis',
+        visitedNodes: [],
+        discoveryTime: {},
+        lowLink: {},
+        bridges: [],
+        edgeCount,
+        densityThreshold,
+        approach,
+        timestamp: 0,
+        complexity: "O(1) - Density calculation",
+        memoryUsage: "O(1) - Simple arithmetic"
+      });
+
+      if (selectedExample === 'dense') {
+        // Dense graph algorithm steps
+        // Step 2: Start DFS from A
+        timestamp++;
+        discoveryTime['A'] = lowLink['A'] = timestamp;
+        steps.push({
+          description: `Visit A: discovery_time[A] = low_link[A] = ${timestamp}. Use enumerate(adj_matrix[0]) = enumerate([0,1,1,0,0]) for matrix optimization.`,
+          phase: 'matrix-traversal',
+          currentNode: 'A',
+          visitedNodes: ['A'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          timestamp,
+          complexity: "O(1) - Node processing",
+          memoryUsage: "O(V) - Arrays for disc, low, visited"
+        });
+
+        // Dense graph continues with cycles, no bridges found
+        timestamp++;
+        discoveryTime['B'] = lowLink['B'] = timestamp;
+        steps.push({
+          description: `A → B: discovery_time[B] = low_link[B] = ${timestamp}. Found edge at enumerate index 1 (has_edge=1).`,
+          phase: 'matrix-traversal',
+          currentNode: 'B',
+          visitedNodes: ['A', 'B'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          currentEdge: 'A-B',
+          timestamp,
+          complexity: "O(1) - Edge traversal",
+          memoryUsage: "O(V) - Stack depth = 2"
+        });
+
+        steps.push({
+          description: `Dense Graph Result: Multiple cycles detected (A-B-C-A, D-E-B-D). No bridges found - all edges are part of cycles.`,
+          phase: 'complete',
+          visitedNodes: ['A', 'B', 'C', 'D', 'E'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          timestamp: timestamp + 1,
+          complexity: "O(V + E) - Matrix approach optimal for dense graphs",
+          memoryUsage: "O(V) - Space efficient"
+        });
+
+      } else {
+        // Sparse graph algorithm steps
+        // Step 2: Convert to adjacency list
+        steps.push({
+          description: `Adjacency List Conversion: Convert matrix to list for sparse optimization. adj_list[A] = [B,D], adj_list[B] = [A,C], adj_list[C] = [B,E], etc.`,
+          phase: 'matrix-traversal',
+          visitedNodes: [],
+          discoveryTime: {},
+          lowLink: {},
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          timestamp: 1,
+          complexity: "O(V²) - Matrix to list conversion",
+          memoryUsage: "O(E) - Adjacency list storage"
+        });
+
+        // Step 3: Start DFS from A
+        timestamp++;
+        discoveryTime['A'] = lowLink['A'] = timestamp;
+        steps.push({
+          description: `Visit A: discovery_time[A] = low_link[A] = ${timestamp}. Use adj_list[A] = [B,D] for faster sparse traversal.`,
+          phase: 'matrix-traversal',
+          currentNode: 'A',
+          visitedNodes: ['A'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          timestamp,
+          complexity: "O(1) - Node processing",
+          memoryUsage: "O(V) - Arrays for disc, low, visited"
+        });
+
+        // Step 4: A -> B
+        timestamp++;
+        discoveryTime['B'] = lowLink['B'] = timestamp;
+        steps.push({
+          description: `A → B: discovery_time[B] = low_link[B] = ${timestamp}. Direct access via adj_list[A][0] = B.`,
+          phase: 'matrix-traversal',
+          currentNode: 'B',
+          visitedNodes: ['A', 'B'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          currentEdge: 'A-B',
+          timestamp,
+          complexity: "O(1) - Edge traversal",
+          memoryUsage: "O(V) - Stack depth = 2"
+        });
+
+        // Step 5: B -> C
+        timestamp++;
+        discoveryTime['C'] = lowLink['C'] = timestamp;
+        steps.push({
+          description: `B → C: discovery_time[C] = low_link[C] = ${timestamp}. Direct access via adj_list[B][1] = C.`,
+          phase: 'bridge-detection',
+          currentNode: 'C',
+          visitedNodes: ['A', 'B', 'C'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          currentEdge: 'B-C',
+          timestamp,
+          complexity: "O(1) - Edge traversal",
+          memoryUsage: "O(V) - Stack depth = 3"
+        });
+
+        // Step 6: C -> E
+        timestamp++;
+        discoveryTime['E'] = lowLink['E'] = timestamp;
+        steps.push({
+          description: `C → E: discovery_time[E] = low_link[E] = ${timestamp}. Direct access via adj_list[C][1] = E.`,
+          phase: 'bridge-detection',
+          currentNode: 'E',
+          visitedNodes: ['A', 'B', 'C', 'E'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          currentEdge: 'C-E',
+          timestamp,
+          complexity: "O(1) - Edge traversal",
+          memoryUsage: "O(V) - Stack depth = 4"
+        });
+
+        // Step 7: Bridge Detection - B-C is a bridge!
+        bridges.push(['B', 'C']);
+        steps.push({
+          description: `Bridge Found: B-C is a bridge! low_link[C] > discovery_time[B] (${timestamp} > 2). Removing B-C disconnects the graph.`,
+          phase: 'bridge-detection',
+          visitedNodes: ['A', 'B', 'C', 'E'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          currentEdge: 'B-C',
+          timestamp: timestamp + 1,
+          complexity: "O(1) - Bridge detection",
+          memoryUsage: "O(V) - Bridge storage"
+        });
+
+        // Step 8: Visit remaining nodes
+        timestamp++;
+        discoveryTime['D'] = lowLink['D'] = timestamp;
+        steps.push({
+          description: `Visit D: discovery_time[D] = low_link[D] = ${timestamp}. Backtrack to A, then A → D via adj_list[A][1] = D.`,
+          phase: 'bridge-detection',
+          currentNode: 'D',
+          visitedNodes: ['A', 'B', 'C', 'D', 'E'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          currentEdge: 'A-D',
+          timestamp,
+          complexity: "O(1) - Edge traversal",
+          memoryUsage: "O(V) - Complete traversal"
+        });
+
+        steps.push({
+          description: `Sparse Graph Complete: Adjacency list optimization used. Found 1 bridge (B-C). Sparse approach is 3x faster for low-density graphs.`,
+          phase: 'complete',
+          visitedNodes: ['A', 'B', 'C', 'D', 'E'],
+          discoveryTime: { ...discoveryTime },
+          lowLink: { ...lowLink },
+          bridges: [...bridges],
+          edgeCount,
+          densityThreshold,
+          approach,
+          timestamp: timestamp + 1,
+          complexity: "O(V + E) - List approach optimal for sparse graphs",
+          memoryUsage: "O(E) - Adjacency list storage"
+        });
+      }
+
+      return steps;
+    };
+
+    const steps = getAnimationSteps();
+    const currentStep = bridgeOptimizationAnimationStep[questionId] || 0;
+    const step = steps[currentStep] || steps[0];
+
+    const drawGraph = (canvas: HTMLCanvasElement, step: BridgeOptimizationAnimationStep) => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Set up canvas
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+
+      // Draw edges based on selected example
+      const edges = selectedExample === 'dense' 
+        ? [['A', 'B'], ['A', 'C'], ['B', 'C'], ['B', 'D'], ['C', 'E'], ['D', 'E']]
+        : [['A', 'B'], ['A', 'D'], ['B', 'C'], ['C', 'E']];
+
+      edges.forEach(([from, to]) => {
+        const [x1, y1] = currentGraph[from as keyof typeof currentGraph];
+        const [x2, y2] = currentGraph[to as keyof typeof currentGraph];
+
+        // Highlight current edge
+        const isCurrentEdge = step.currentEdge === `${from}-${to}` || step.currentEdge === `${to}-${from}`;
+        
+        ctx.strokeStyle = isCurrentEdge ? '#ef4444' : '#6b7280';
+        ctx.lineWidth = isCurrentEdge ? 3 : 2;
+        ctx.setLineDash(isCurrentEdge ? [5, 5] : []);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw arrow for current edge
+        if (isCurrentEdge) {
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const arrowLength = 15;
+          const arrowAngle = Math.PI / 6;
+
+          const arrowX = x2 - Math.cos(angle) * 25;
+          const arrowY = y2 - Math.sin(angle) * 25;
+
+          ctx.beginPath();
+          ctx.moveTo(arrowX, arrowY);
+          ctx.lineTo(arrowX - arrowLength * Math.cos(angle - arrowAngle), arrowY - arrowLength * Math.sin(angle - arrowAngle));
+          ctx.moveTo(arrowX, arrowY);
+          ctx.lineTo(arrowX - arrowLength * Math.cos(angle + arrowAngle), arrowY - arrowLength * Math.sin(angle + arrowAngle));
+          ctx.stroke();
+        }
+      });
+
+      // Draw bridges
+      step.bridges.forEach(([from, to]) => {
+        const [x1, y1] = currentGraph[from as keyof typeof currentGraph];
+        const [x2, y2] = currentGraph[to as keyof typeof currentGraph];
+
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 5]);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Bridge label
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 10px Arial';
+        ctx.fillText('BRIDGE', midX, midY - 10);
+      });
+
+      // Draw nodes
+      Object.entries(currentGraph).forEach(([node, [x, y]]) => {
+        const isVisited = step.visitedNodes.includes(node);
+        const isCurrent = step.currentNode === node;
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        
+        if (isCurrent) {
+          ctx.fillStyle = '#ef4444';
+        } else if (isVisited) {
+          ctx.fillStyle = '#10b981';
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+        }
+        ctx.fill();
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Node label
+        ctx.fillStyle = isCurrent || isVisited ? '#ffffff' : '#374151';
+        ctx.font = 'bold 14px Arial';
+        ctx.fillText(node, x, y + 5);
+
+        // Discovery time and low-link values
+        if (step.discoveryTime[node] !== undefined) {
+          ctx.fillStyle = '#1f2937';
+          ctx.font = '10px Arial';
+          ctx.fillText(`d:${step.discoveryTime[node]}`, x - 15, y - 30);
+          ctx.fillText(`l:${step.lowLink[node]}`, x + 15, y - 30);
+        }
+      });
+
+      // Draw optimization info panel
+      const infoX = 320;
+      const infoY = 20;
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(infoX, infoY, 260, 200);
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 260, 200);
+
+      ctx.fillStyle = '#1f2937';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('🚀 Optimization Analysis', infoX + 10, infoY + 20);
+
+      ctx.font = '10px Arial';
+      ctx.fillText(`Edges: ${step.edgeCount}`, infoX + 10, infoY + 40);
+      ctx.fillText(`Threshold: ${step.densityThreshold}`, infoX + 10, infoY + 55);
+      ctx.fillText(`Approach: ${step.approach.toUpperCase()}`, infoX + 10, infoY + 70);
+      
+      ctx.fillStyle = step.approach === 'dense' ? '#059669' : '#dc2626';
+      ctx.fillText(step.approach === 'dense' ? `✓ Matrix + enumerate()` : `✓ Adjacency List`, infoX + 10, infoY + 85);
+      
+      ctx.fillStyle = '#1f2937';
+      ctx.fillText(`Complexity: ${step.complexity}`, infoX + 10, infoY + 105);
+      ctx.fillText(`Memory: ${step.memoryUsage}`, infoX + 10, infoY + 120);
+      
+      if (step.bridges.length > 0) {
+        ctx.fillStyle = '#dc2626';
+        ctx.fillText(`Bridges: ${step.bridges.length}`, infoX + 10, infoY + 140);
+      } else {
+        ctx.fillStyle = '#059669';
+        ctx.fillText('Bridges: None found', infoX + 10, infoY + 140);
+      }
+
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, infoX + 10, infoY + 165);
+    };
+
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      drawGraph(canvas, step);
+
+      // Auto-advance animation
+      const interval = setInterval(() => {
+        setBridgeOptimizationAnimationStep(prev => ({
+          ...prev,
+          [questionId]: ((prev[questionId] || 0) + 1) % steps.length
+        }));
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentStep, questionId]);
+
+    return (
+      <div className="bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
+        <div className="flex items-center mb-3">
+          <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+          <h4 className="font-semibold text-green-800 dark:text-green-200">
+            🚀 Bridge Detection Optimization Demo
+          </h4>
+        </div>
+        
+        {/* Example Selection Buttons */}
+        <div className="flex justify-center mb-4 space-x-3">
+          <button
+            onClick={() => setSelectedExample('dense')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              selectedExample === 'dense'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300'
+            }`}
+          >
+            📊 Dense Graph (6 edges)
+          </button>
+          <button
+            onClick={() => setSelectedExample('sparse')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+              selectedExample === 'sparse'
+                ? 'bg-green-500 text-white shadow-lg'
+                : 'bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300'
+            }`}
+          >
+            🌿 Sparse Graph (3 edges)
+          </button>
+        </div>
+
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={240}
+          className="border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 mb-3"
+        />
+        
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 mt-2 flex-shrink-0"></div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              <span className="font-medium text-blue-600 dark:text-blue-400">
+                {step.phase.charAt(0).toUpperCase() + step.phase.slice(1).replace('-', ' ')}:
+              </span>{' '}
+              {step.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-between items-center">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setBridgeOptimizationAnimationStep(prev => ({
+                ...prev,
+                [questionId]: Math.max(0, (prev[questionId] || 0) - 1)
+              }))}
+              className="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded text-sm font-medium transition-colors"
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setBridgeOptimizationAnimationStep(prev => ({
+                ...prev,
+                [questionId]: ((prev[questionId] || 0) + 1) % steps.length
+              }))}
+              className="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded text-sm font-medium transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            Auto-advancing every 3s
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   // Cycle Detection Visualization Component
   const CycleVisualization = ({ questionId, type }: { questionId: number, type: 'with-cycle' | 'without-cycle' }) => {
@@ -3294,12 +6843,12 @@ const GraphMultipleChoiceGame = () => {
     // Define a graph for Tarjan's bridge-finding demonstration
     const graph = {
       nodes: [
-        { id: 'A', x: 120, y: 80, color: 'white' },
-        { id: 'B', x: 240, y: 80, color: 'white' },
-        { id: 'C', x: 320, y: 160, color: 'white' },
-        { id: 'D', x: 240, y: 240, color: 'white' },
-        { id: 'E', x: 120, y: 240, color: 'white' },
-        { id: 'F', x: 40, y: 160, color: 'white' }
+        { id: 'A', x: 150, y: 80, color: 'white' },
+        { id: 'B', x: 270, y: 80, color: 'white' },
+        { id: 'C', x: 350, y: 160, color: 'white' },
+        { id: 'D', x: 270, y: 240, color: 'white' },
+        { id: 'E', x: 150, y: 240, color: 'white' },
+        { id: 'F', x: 70, y: 160, color: 'white' }
       ],
       edges: [
         { from: 'A', to: 'B' },
@@ -3497,11 +7046,11 @@ const GraphMultipleChoiceGame = () => {
       const isDarkMode = document.documentElement.classList.contains('dark');
       
       // Clear canvas
-      ctx.clearRect(0, 0, 450, 320);
+      ctx.clearRect(0, 0, 510, 280);
       
       // Draw background
       ctx.fillStyle = isDarkMode ? '#1f2937' : '#f8fafc';
-      ctx.fillRect(0, 0, 450, 320);
+      ctx.fillRect(0, 0, 510, 280);
 
       // Draw all edges first
       graph.edges.forEach(edge => {
@@ -3625,7 +7174,7 @@ const GraphMultipleChoiceGame = () => {
       });
 
       // Draw algorithm state info on the right
-      const infoX = 360;
+      const infoX = 390;
       let infoY = 30;
       
       ctx.fillStyle = isDarkMode ? '#f3f4f6' : '#1f2937';
@@ -3699,10 +7248,10 @@ const GraphMultipleChoiceGame = () => {
           </p>
         </div>
 
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-center mb-3">
           <canvas
             ref={canvasRef}
-            width={450}
+            width={510}
             height={320}
             className="rounded-lg bg-white dark:bg-gray-800"
           />
@@ -3845,12 +7394,12 @@ const GraphMultipleChoiceGame = () => {
     // Define a graph for SCC demonstration (same graph for both algorithms)
     const graph = {
       nodes: [
-        { id: 'A', x: 80, y: 80, color: 'white' },
-        { id: 'B', x: 160, y: 80, color: 'white' },
-        { id: 'C', x: 240, y: 80, color: 'white' },
-        { id: 'D', x: 80, y: 180, color: 'white' },
-        { id: 'E', x: 160, y: 180, color: 'white' },
-        { id: 'F', x: 240, y: 180, color: 'white' }
+        { id: 'A', x: 110, y: 80, color: 'white' },
+        { id: 'B', x: 190, y: 80, color: 'white' },
+        { id: 'C', x: 270, y: 80, color: 'white' },
+        { id: 'D', x: 110, y: 180, color: 'white' },
+        { id: 'E', x: 190, y: 180, color: 'white' },
+        { id: 'F', x: 270, y: 180, color: 'white' }
       ],
       edges: [
         { from: 'A', to: 'B' },
@@ -4171,8 +7720,8 @@ const GraphMultipleChoiceGame = () => {
       const sccs: string[][] = [];
       const stack: string[] = [];
 
-      // Simulate Tarjan's algorithm with correct DFS order following graph edges
-      // A -> B -> C -> F (F completes), backtrack C -> A (cycle detected), then A -> D -> E -> D (cycle detected)
+      // Simulate Tarjan's algorithm with proper low-link updates
+      // DFS: A(1) -> B(2) -> C(3) -> F(4), then backtrack and A -> D(5) -> E(6)
       
       // Visit A
       timestamp++;
@@ -4196,7 +7745,7 @@ const GraphMultipleChoiceGame = () => {
         memoryUsage: "O(V) - Explicit stack tracking"
       });
 
-      // Visit B
+      // Visit B (from A)
       timestamp++;
       discoveryTime['B'] = lowLink['B'] = timestamp;
       onStack['B'] = true;
@@ -4218,7 +7767,7 @@ const GraphMultipleChoiceGame = () => {
         memoryUsage: "O(V) - Explicit stack tracking"
       });
 
-      // Visit C
+      // Visit C (from B)
       timestamp++;
       discoveryTime['C'] = lowLink['C'] = timestamp;
       onStack['C'] = true;
@@ -4240,51 +7789,7 @@ const GraphMultipleChoiceGame = () => {
         memoryUsage: "O(V) - Explicit stack tracking"
       });
 
-      // Visit D
-      timestamp++;
-      discoveryTime['D'] = lowLink['D'] = timestamp;
-      onStack['D'] = true;
-      stack.push('D');
-      steps.push({
-        description: `Visit D: discovery_time[D] = low_link[D] = ${timestamp}, push to stack. Backtrack to A, then A → D.`,
-        algorithm: 'tarjan',
-        phase: 'tarjan-dfs',
-        currentNode: 'D',
-        visitedNodes: ['A', 'B', 'C', 'D'],
-        finishingOrder: [...stack],
-        discoveryTime: { ...discoveryTime },
-        lowLink: { ...lowLink },
-        onStack: { ...onStack },
-        sccs: [...sccs],
-        currentSCC: [],
-        timestamp,
-        complexity: "O(1) - Process each node",
-        memoryUsage: "O(V) - Explicit stack tracking"
-      });
-
-      // Visit E
-      timestamp++;
-      discoveryTime['E'] = lowLink['E'] = timestamp;
-      onStack['E'] = true;
-      stack.push('E');
-      steps.push({
-        description: `Visit E: discovery_time[E] = low_link[E] = ${timestamp}, push to stack. Follow edge D → E.`,
-        algorithm: 'tarjan',
-        phase: 'tarjan-dfs',
-        currentNode: 'E',
-        visitedNodes: ['A', 'B', 'C', 'D', 'E'],
-        finishingOrder: [...stack],
-        discoveryTime: { ...discoveryTime },
-        lowLink: { ...lowLink },
-        onStack: { ...onStack },
-        sccs: [...sccs],
-        currentSCC: [],
-        timestamp,
-        complexity: "O(1) - Process each node",
-        memoryUsage: "O(V) - Explicit stack tracking"
-      });
-
-      // Visit F
+      // Visit F (from C)
       timestamp++;
       discoveryTime['F'] = lowLink['F'] = timestamp;
       onStack['F'] = true;
@@ -4294,7 +7799,7 @@ const GraphMultipleChoiceGame = () => {
         algorithm: 'tarjan',
         phase: 'tarjan-dfs',
         currentNode: 'F',
-        visitedNodes: ['A', 'B', 'C', 'D', 'E', 'F'],
+        visitedNodes: ['A', 'B', 'C', 'F'],
         finishingOrder: [...stack],
         discoveryTime: { ...discoveryTime },
         lowLink: { ...lowLink },
@@ -4306,19 +7811,18 @@ const GraphMultipleChoiceGame = () => {
         memoryUsage: "O(V) - Explicit stack tracking"
       });
 
-      // SCC detection points (in order of discovery during backtracking)
-      // SCC 1: F (discovered first as it has no outgoing edges)
+      // F has no outgoing edges - SCC detected immediately
       const scc1 = ['F'];
       sccs.push([...scc1]);
       onStack['F'] = false;
       stack.splice(stack.indexOf('F'), 1);
 
       steps.push({
-        description: "SCC found: {F} - single node SCC, low_link[F] = discovery_time[F], pop from stack",
+        description: "SCC found: {F} - F has no outgoing edges, low_link[F] = discovery_time[F] = 4, pop F from stack",
         algorithm: 'tarjan',
         phase: 'tarjan-dfs',
         currentNode: 'F',
-        visitedNodes: ['A', 'B', 'C', 'D', 'E', 'F'],
+        visitedNodes: ['A', 'B', 'C', 'F'],
         finishingOrder: [...stack],
         discoveryTime: { ...discoveryTime },
         lowLink: { ...lowLink },
@@ -4330,7 +7834,164 @@ const GraphMultipleChoiceGame = () => {
         memoryUsage: "O(V) - Update stack and arrays"
       });
 
-      // SCC 2: D-E cycle (discovered when backtracking from E to D)
+      // Backtrack to C - C's low_link stays 3 (F doesn't update it)
+      steps.push({
+        description: `Backtrack to C: low_link[C] remains 3 (F is separate SCC, doesn't propagate back)`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'C',
+        visitedNodes: ['A', 'B', 'C'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 2,
+        complexity: "O(1) - Backtrack step",
+        memoryUsage: "O(V) - Stack tracking"
+      });
+
+      // Check C -> A (back edge to node on stack)
+      lowLink['C'] = Math.min(lowLink['C'], discoveryTime['A']); // min(3, 1) = 1
+      steps.push({
+        description: `C → A: Back edge found! Update low_link[C] = min(3, discovery_time[A]) = min(3, 1) = 1`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'C',
+        visitedNodes: ['A', 'B', 'C'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 3,
+        complexity: "O(1) - Back edge processing",
+        memoryUsage: "O(V) - Low-link update"
+      });
+
+      // Backtrack to B - update B's low_link
+      lowLink['B'] = Math.min(lowLink['B'], lowLink['C']); // min(2, 1) = 1
+      steps.push({
+        description: `Backtrack to B: Update low_link[B] = min(2, low_link[C]) = min(2, 1) = 1`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'B',
+        visitedNodes: ['A', 'B'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 4,
+        complexity: "O(1) - Low-link propagation",
+        memoryUsage: "O(V) - Stack tracking"
+      });
+
+      // Backtrack to A - update A's low_link  
+      lowLink['A'] = Math.min(lowLink['A'], lowLink['B']); // min(1, 1) = 1
+      steps.push({
+        description: `Backtrack to A: Update low_link[A] = min(1, low_link[B]) = min(1, 1) = 1`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'A',
+        visitedNodes: ['A'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 5,
+        complexity: "O(1) - Low-link propagation",
+        memoryUsage: "O(V) - Stack tracking"
+      });
+
+      // Visit D (from A)
+      timestamp = timestamp + 6;
+      discoveryTime['D'] = lowLink['D'] = timestamp;
+      onStack['D'] = true;
+      stack.push('D');
+      steps.push({
+        description: `Visit D: discovery_time[D] = low_link[D] = ${timestamp}, push to stack. Follow edge A → D.`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'D',
+        visitedNodes: ['A', 'D'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp,
+        complexity: "O(1) - Process each node",
+        memoryUsage: "O(V) - Explicit stack tracking"
+      });
+
+      // Visit E (from D)
+      timestamp++;
+      discoveryTime['E'] = lowLink['E'] = timestamp;
+      onStack['E'] = true;
+      stack.push('E');
+      steps.push({
+        description: `Visit E: discovery_time[E] = low_link[E] = ${timestamp}, push to stack. Follow edge D → E.`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'E',
+        visitedNodes: ['A', 'D', 'E'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp,
+        complexity: "O(1) - Process each node",
+        memoryUsage: "O(V) - Explicit stack tracking"
+      });
+
+      // Check E -> D (back edge to node on stack)
+      lowLink['E'] = Math.min(lowLink['E'], discoveryTime['D']); // min(12, 11) = 11
+      steps.push({
+        description: `E → D: Back edge found! Update low_link[E] = min(${timestamp}, discovery_time[D]) = min(${timestamp}, ${timestamp-1}) = ${timestamp-1}`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'E',
+        visitedNodes: ['A', 'D', 'E'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 1,
+        complexity: "O(1) - Back edge processing",
+        memoryUsage: "O(V) - Low-link update"
+      });
+
+      // Backtrack to D - D's low_link gets updated
+      lowLink['D'] = Math.min(lowLink['D'], lowLink['E']); // min(11, 11) = 11
+      steps.push({
+        description: `Backtrack to D: low_link[D] = min(${timestamp-1}, low_link[E]) = min(${timestamp-1}, ${timestamp-1}) = ${timestamp-1}. Since low_link[D] = discovery_time[D], D is SCC root!`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'D',
+        visitedNodes: ['A', 'D'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 2,
+        complexity: "O(1) - SCC root detection",
+        memoryUsage: "O(V) - Stack tracking"
+      });
+
+      // D-E SCC detection (D is root since low_link[D] = discovery_time[D])
       const scc2 = ['D', 'E'];
       sccs.push([...scc2]);
       scc2.forEach(node => {
@@ -4339,23 +8000,41 @@ const GraphMultipleChoiceGame = () => {
       });
 
       steps.push({
-        description: "SCC found: {D, E} - low_link[D] = discovery_time[D], pop stack until D",
+        description: `SCC found: {D, E} - low_link[D] = discovery_time[D] = ${timestamp-1}, pop D,E from stack`,
         algorithm: 'tarjan',
         phase: 'tarjan-dfs',
         currentNode: 'D',
-        visitedNodes: ['A', 'B', 'C', 'D', 'E', 'F'],
+        visitedNodes: ['A'],
         finishingOrder: [...stack],
         discoveryTime: { ...discoveryTime },
         lowLink: { ...lowLink },
         onStack: { ...onStack },
         sccs: [...sccs],
         currentSCC: scc2,
-        timestamp: timestamp + 2,
+        timestamp: timestamp + 3,
         complexity: "O(SCC size) - Pop SCC from stack",
         memoryUsage: "O(V) - Update stack and arrays"
       });
 
-      // SCC 3: A-B-C cycle (discovered last when backtracking from C to A)
+      // Backtrack to A - A's low_link doesn't change (D-E SCC is separate)
+      steps.push({
+        description: `Backtrack to A: low_link[A] remains 1 (D-E SCC is separate, doesn't affect A's low_link)`,
+        algorithm: 'tarjan',
+        phase: 'tarjan-dfs',
+        currentNode: 'A',
+        visitedNodes: ['A'],
+        finishingOrder: [...stack],
+        discoveryTime: { ...discoveryTime },
+        lowLink: { ...lowLink },
+        onStack: { ...onStack },
+        sccs: [...sccs],
+        currentSCC: [],
+        timestamp: timestamp + 4,
+        complexity: "O(1) - Backtrack step",
+        memoryUsage: "O(V) - Stack tracking"
+      });
+
+      // A-B-C SCC detection (A is root since low_link[A] = discovery_time[A] = 1)
       const scc3 = ['A', 'B', 'C'];
       sccs.push([...scc3]);
       scc3.forEach(node => {
@@ -4364,18 +8043,18 @@ const GraphMultipleChoiceGame = () => {
       });
 
       steps.push({
-        description: "SCC found: {A, B, C} - low_link[A] = discovery_time[A], pop stack until A",
+        description: "SCC found: {A, B, C} - low_link[A] = discovery_time[A] = 1, A is SCC root, pop A,B,C from stack",
         algorithm: 'tarjan',
         phase: 'tarjan-dfs',
         currentNode: 'A',
-        visitedNodes: ['A', 'B', 'C', 'D', 'E', 'F'],
+        visitedNodes: [],
         finishingOrder: [...stack],
         discoveryTime: { ...discoveryTime },
         lowLink: { ...lowLink },
         onStack: { ...onStack },
         sccs: [...sccs],
         currentSCC: scc3,
-        timestamp: timestamp + 3,
+        timestamp: timestamp + 5,
         complexity: "O(SCC size) - Pop SCC from stack",
         memoryUsage: "O(V) - Update stack and arrays"
       });
@@ -4409,17 +8088,17 @@ const GraphMultipleChoiceGame = () => {
       const isDarkMode = document.documentElement.classList.contains('dark');
       
       // Clear canvas
-      ctx.clearRect(0, 0, 450, 280);
+      ctx.clearRect(0, 0, 510, 320);
       
       // Draw background
       ctx.fillStyle = isDarkMode ? '#1f2937' : '#f8fafc';
-      ctx.fillRect(0, 0, 450, 280);
+      ctx.fillRect(0, 0, 510, 320);
 
       // Draw title
       ctx.fillStyle = isDarkMode ? '#f3f4f6' : '#1f2937';
       ctx.font = 'bold 16px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`${algorithm === 'kosaraju' ? 'Kosaraju' : 'Tarjan'}'s Algorithm`, 225, 25);
+      ctx.fillText(`${algorithm === 'kosaraju' ? 'Kosaraju' : 'Tarjan'}'s Algorithm`, 255, 25);
 
       // Draw edges (transpose if in transpose phase)
       const isTranspose = step.phase === 'transpose' || step.phase === 'dfs2';
@@ -4521,7 +8200,7 @@ const GraphMultipleChoiceGame = () => {
       });
 
       // Draw algorithm state info
-      const infoX = 330;
+      const infoX = 360;
       let infoY = 50;
       
       ctx.fillStyle = isDarkMode ? '#f3f4f6' : '#1f2937';
@@ -4619,10 +8298,10 @@ const GraphMultipleChoiceGame = () => {
           </p>
         </div>
 
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-center mb-3">
           <canvas
             ref={canvasRef}
-            width={450}
+            width={510}
             height={280}
             className="rounded-lg bg-white dark:bg-gray-800"
           />
@@ -4921,15 +8600,6 @@ const GraphMultipleChoiceGame = () => {
       difficulty: "Hard",
       question: "What's the correct order of operations in Kosaraju's algorithm for finding SCCs?",
       code: `def kosaraju_scc(graph):
-    """
-    Find Strongly Connected Components using Kosaraju's Algorithm
-    
-    Args:
-        graph: Adjacency list representation of directed graph
-        
-    Returns:
-        List of SCCs, where each SCC is a list of nodes
-    """
     n = len(graph)
     visited = [False] * n
     stack = []
@@ -5061,13 +8731,19 @@ const GraphMultipleChoiceGame = () => {
       difficulty: "Hard",
       question: "What's the missing line in the Ford-Fulkerson algorithm?",
       code: `def ford_fulkerson(graph, source, sink):
+    """
+    Ford-Fulkerson algorithm for maximum flow using Edmonds-Karp (BFS)
+    Time: O(VE²), Space: O(V²)
+    """
     def bfs_find_path(source, sink, parent):
+        """Find augmenting path using BFS (Edmonds-Karp)"""
         visited = set([source])
         queue = [source]
         
         while queue:
             u = queue.pop(0)
             for v in range(len(graph)):
+                # Check if edge exists and has positive capacity
                 if v not in visited and graph[u][v] > 0:
                     visited.add(v)
                     parent[v] = u
@@ -5076,28 +8752,45 @@ const GraphMultipleChoiceGame = () => {
                     queue.append(v)
         return False
     
+    # Initialize
     parent = [-1] * len(graph)
     max_flow = 0
     
+    # Main Ford-Fulkerson loop
     while bfs_find_path(source, sink, parent):
-        # Find minimum residual capacity along the path
+        # Find minimum residual capacity along the path (bottleneck)
         path_flow = float('inf')
         s = sink
         while s != source:
-            # MISSING LINE HERE - how to find bottleneck capacity?
+            # MISSING LINE: Find bottleneck capacity
             path_flow = min(path_flow, graph[parent[s]][s])
             s = parent[s]
         
-        # Update residual capacities
+        # Update residual capacities along the path
         v = sink
         while v != source:
             u = parent[v]
-            graph[u][v] -= path_flow  # Forward edge
-            # MISSING LINE HERE - how to update backward edge?
-            graph[v][u] += path_flow
+            graph[u][v] -= path_flow  # Reduce forward edge capacity
+            # MISSING LINE: Update backward edge for flow reversal
+            graph[v][u] += path_flow  # Add backward edge capacity
             v = parent[v]
         
-        max_flow += path_flow`,
+        # Add path flow to total flow
+        max_flow += path_flow
+    
+    return max_flow
+
+# Example usage:
+# Capacity matrix where graph[i][j] = capacity from node i to j
+capacity_matrix = [
+    [0, 16, 13, 0, 0, 0],  # Source (0)
+    [0, 0, 10, 12, 0, 0],  # Node 1
+    [0, 4, 0, 0, 14, 0],   # Node 2  
+    [0, 0, 9, 0, 0, 20],   # Node 3
+    [0, 0, 0, 7, 0, 4],    # Node 4
+    [0, 0, 0, 0, 0, 0]     # Sink (5)
+]
+max_flow = ford_fulkerson(capacity_matrix, 0, 5)  # Returns 23`,
       options: [
         "path_flow = min(path_flow, graph[parent[s]][s]) and graph[v][u] += path_flow",
         "path_flow = min(path_flow, graph[s][parent[s]]) and graph[v][u] -= path_flow",
@@ -5127,15 +8820,21 @@ const GraphMultipleChoiceGame = () => {
       functionName: "edmonds_karp",
       difficulty: "Medium",
       question: "What's the key difference between Edmonds-Karp and basic Ford-Fulkerson?",
-      code: `def edmonds_karp(capacity, source, sink):
+      code: `# EDMONDS-KARP ALGORITHM (BFS-based Ford-Fulkerson)
+def edmonds_karp(capacity, source, sink):
+    """
+    Edmonds-Karp: Ford-Fulkerson with BFS for shortest augmenting paths
+    Time: O(VE²), Space: O(V²)
+    """
     def bfs_shortest_path(source, sink, parent):
+        """Find shortest augmenting path using BFS"""
         visited = [False] * len(capacity)
         queue = []
         queue.append(source)
         visited[source] = True
         
         while queue:
-            u = queue.pop(0)
+            u = queue.pop(0)  # BFS: FIFO queue
             
             for v in range(len(capacity)):
                 if not visited[v] and capacity[u][v] > 0:
@@ -5149,22 +8848,86 @@ const GraphMultipleChoiceGame = () => {
     parent = [-1] * len(capacity)
     max_flow_value = 0
     
-    # MISSING COMMENT - what type of path does this find?
-    # This finds the shortest augmenting path in terms of number of edges
+    # KEY DIFFERENCE: Uses BFS to find shortest augmenting paths
+    # This guarantees O(VE²) time complexity
     while bfs_shortest_path(source, sink, parent):
+        # Find bottleneck capacity
         path_flow = float('Inf')
         s = sink
         while s != source:
             path_flow = min(path_flow, capacity[parent[s]][s])
             s = parent[s]
         
+        # Update residual graph
         max_flow_value += path_flow
         v = sink
         while v != source:
             u = parent[v]
-            capacity[u][v] -= path_flow
-            capacity[v][u] += path_flow
-            v = parent[v]`,
+            capacity[u][v] -= path_flow  # Forward edge
+            capacity[v][u] += path_flow  # Backward edge
+            v = parent[v]
+    
+    return max_flow_value
+
+# BASIC FORD-FULKERSON ALGORITHM (DFS-based)
+def ford_fulkerson_basic(capacity, source, sink):
+    """
+    Basic Ford-Fulkerson: Uses DFS for any augmenting path
+    Time: O(E * max_flow) - can be exponential, Space: O(V²)
+    """
+    def dfs_any_path(source, sink, parent, visited):
+        """Find any augmenting path using DFS"""
+        if source == sink:
+            return True
+            
+        visited[source] = True
+        
+        for v in range(len(capacity)):
+            if not visited[v] and capacity[source][v] > 0:
+                parent[v] = source
+                if dfs_any_path(v, sink, parent, visited):
+                    return True
+        
+        return False
+    
+    parent = [-1] * len(capacity)
+    max_flow_value = 0
+    
+    # KEY DIFFERENCE: Uses DFS to find any augmenting path
+    # This can lead to poor path choices and exponential time
+    while True:
+        visited = [False] * len(capacity)
+        if not dfs_any_path(source, sink, parent, visited):
+            break
+            
+        # Find bottleneck capacity
+        path_flow = float('Inf')
+        s = sink
+        while s != source:
+            path_flow = min(path_flow, capacity[parent[s]][s])
+            s = parent[s]
+        
+        # Update residual graph
+        max_flow_value += path_flow
+        v = sink
+        while v != source:
+            u = parent[v]
+            capacity[u][v] -= path_flow  # Forward edge
+            capacity[v][u] += path_flow  # Backward edge
+            v = parent[v]
+    
+    return max_flow_value
+
+# COMPARISON EXAMPLE:
+# Same graph, different path selection strategies
+capacity_matrix = [
+    [0, 1000, 1000, 0],    # Source to A, B
+    [0, 0, 1, 1000],       # A to C, Sink  
+    [0, 0, 0, 1000],       # B to Sink
+    [0, 0, 0, 0]           # Sink
+]
+# Edmonds-Karp: Always finds shortest paths (fewer iterations)
+# Basic Ford-Fulkerson: May find longer paths (more iterations)`,
       options: [
         "Uses BFS to find shortest augmenting paths",
         "Uses DFS to find any augmenting path",
@@ -6766,36 +10529,41 @@ def verify_mst_property(edges, mst_edges):
       functionName: "hopcroft_karp_matching",
       difficulty: "Hard",
       question: "What's the key optimization in Hopcroft-Karp over basic bipartite matching?",
-      code: `def hopcroftKarp(graph, n, m):
-    # n = left nodes, m = right nodes
-    pair_u = [-1] * (n + 1)  # pair_u[u] = v means u is matched to v
-    pair_v = [-1] * (m + 1)  # pair_v[v] = u means v is matched to u
+      code: `def hopcroft_karp_standard(graph, n, m):
+    """
+    Standard Hopcroft-Karp with explicit NIL handling
+    """
+    NIL = 0  # Explicit constant for unmatched
+    
+    pair_u = [NIL] * (n + 1)
+    pair_v = [NIL] * (m + 1)
     dist = [0] * (n + 1)
     
     def bfs():
         queue = []
+        
         for u in range(1, n + 1):
-            if pair_u[u] == -1:  # Unmatched left node
+            if pair_u[u] == NIL:
                 dist[u] = 0
                 queue.append(u)
             else:
                 dist[u] = float('inf')
         
-        dist[0] = float('inf')
+        dist[NIL] = float('inf')
         
         while queue:
             u = queue.pop(0)
-            if dist[u] < dist[0]:
+            
+            if dist[u] < dist[NIL]:
                 for v in graph[u]:
-                    # MISSING OPTIMIZATION - what makes this faster?
                     if dist[pair_v[v]] == float('inf'):
                         dist[pair_v[v]] = dist[u] + 1
                         queue.append(pair_v[v])
         
-        return dist[0] != float('inf')
+        return dist[NIL] != float('inf')
     
     def dfs(u):
-        if u != 0:
+        if u != NIL:
             for v in graph[u]:
                 if dist[pair_v[v]] == dist[u] + 1:
                     if dfs(pair_v[v]):
@@ -6809,10 +10577,38 @@ def verify_mst_property(edges, mst_edges):
     matching = 0
     while bfs():
         for u in range(1, n + 1):
-            if pair_u[u] == -1 and dfs(u):
+            if pair_u[u] == NIL and dfs(u):
                 matching += 1
     
-    return matching`,
+    return matching
+
+    ------------------------------------------------------------
+    def basic_bipartite_matching(graph, n, m):
+    """Basic augmenting path approach - O(VE)"""
+    match_left = [-1] * (n + 1)   # Left side matches (-1 = unmatched)
+    match_right = [-1] * (m + 1)  # Right side matches (-1 = unmatched)
+    
+    def dfs(u, visited):
+        """Find augmenting path from left node u"""
+        for v in graph[u]:  # Try each right neighbor of u
+            if v not in visited:
+                visited.add(v)
+                # If v is unmatched OR we can find augmenting path from match[v]
+                if match_right[v] == -1 or dfs(match_right[v], visited):
+                    match_left[u] = v
+                    match_right[v] = u
+                    return True
+        return False
+    
+    matching = 0
+    # Try to find augmenting path for each left node
+    for u in range(1, n + 1):
+        visited = set()
+        if dfs(u, visited):
+            matching += 1
+    
+    return matching, match_left, match_right
+    `,
       options: [
         "Finds multiple augmenting paths simultaneously using BFS layering",
         "Uses better data structures like priority queues",
@@ -7197,6 +10993,26 @@ def verify_mst_property(edges, mst_edges):
       difficulty: "Medium",
       question: "What optimization can be applied to bridge detection in dense graphs?",
       code: `def find_bridges_optimized(adj_matrix):
+    """
+    Optimized bridge detection for dense graphs with density-based approach selection
+    """
+    n = len(adj_matrix)
+    
+    # Step 1: Analyze graph density to choose optimal approach
+    edge_count = sum(sum(row) for row in adj_matrix) // 2
+    density_threshold = n * n // 4
+    
+    if edge_count < density_threshold:
+        # Sparse graph: convert to adjacency list for better performance
+        return find_bridges_sparse_optimized(adj_matrix)
+    else:
+        # Dense graph: use matrix-based approach with enumerate optimization
+        return find_bridges_dense_optimized(adj_matrix)
+
+def find_bridges_dense_optimized(adj_matrix):
+    """
+    Dense graph bridge detection with enumerate optimization
+    """
     n = len(adj_matrix)
     visited = [False] * n
     disc = [0] * n
@@ -7210,23 +11026,71 @@ def verify_mst_property(edges, mst_edges):
         disc[u] = low[u] = time[0]
         time[0] += 1
         
-        # OPTIMIZATION - how to handle adjacency matrix efficiently?
-        for v in range(n):
-            if adj_matrix[u][v] == 1:  # Edge exists
+        # OPTIMIZATION: Use enumerate instead of range(n) + indexing
+        for v, has_edge in enumerate(adj_matrix[u]):
+            if has_edge == 1:  # Edge exists
                 if not visited[v]:
                     parent[v] = u
                     bridge_dfs(v)
                     low[u] = min(low[u], low[v])
+                    # Bridge condition: child cannot reach back to ancestors
                     if low[v] > disc[u]:
                         bridges.append((u, v))
-                elif v != parent[u]:
+                elif v != parent[u]:  # Back edge (not to parent)
                     low[u] = min(low[u], disc[v])
+    
+    # Run DFS from all unvisited nodes
+    for i in range(n):
+        if not visited[i]:
+            bridge_dfs(i)
+    
+    return bridges
+
+def find_bridges_sparse_optimized(adj_matrix):
+    """
+    Sparse graph bridge detection using adjacency list conversion
+    """
+    n = len(adj_matrix)
+    
+    # Convert matrix to adjacency list for sparse graphs
+    adj_list = [[] for _ in range(n)]
+    for u in range(n):
+        for v, has_edge in enumerate(adj_matrix[u]):
+            if has_edge == 1 and u < v:  # Avoid duplicates
+                adj_list[u].append(v)
+                adj_list[v].append(u)
+    
+    # Standard Tarjan's bridge algorithm on adjacency list
+    visited = [False] * n
+    disc = [0] * n
+    low = [0] * n
+    parent = [-1] * n
+    bridges = []
+    time = [0]
+    
+    def bridge_dfs(u):
+        visited[u] = True
+        disc[u] = low[u] = time[0]
+        time[0] += 1
+        
+        for v in adj_list[u]:  # Much faster for sparse graphs
+            if not visited[v]:
+                parent[v] = u
+                bridge_dfs(v)
+                low[u] = min(low[u], low[v])
+                if low[v] > disc[u]:
+                    bridges.append((u, v))
+            elif v != parent[u]:
+                low[u] = min(low[u], disc[v])
     
     for i in range(n):
         if not visited[i]:
             bridge_dfs(i)
     
-    return bridges`,
+    return bridges
+
+# Example: Dense graph (6 edges, threshold=6) uses matrix approach
+# adj_matrix = [[0,1,1,0,0], [1,0,1,1,0], [1,1,0,0,1], [0,1,0,0,1], [0,0,1,1,0]]`,
       options: [
         "Use adjacency list instead of matrix for sparse graphs",
         "Use bit manipulation for the adjacency matrix",
@@ -7406,8 +11270,14 @@ def tarjan_scc(graph):
       functionName: "dinic_algorithm",
       difficulty: "Hard",
       question: "What's the missing optimization in Dinic's algorithm?",
-      code: `def dinic_max_flow(graph, source, sink):
+      code: `# DINIC'S ALGORITHM - Level Graph + Blocking Flow
+def dinic_max_flow(graph, source, sink):
+    """
+    Dinic's Algorithm: O(V²E) - faster than Edmonds-Karp O(VE²)
+    Key optimizations: Level graphs + Current edge optimization
+    """
     def bfs_level():
+        """Build level graph using BFS - only shortest paths"""
         level = [-1] * len(graph)
         level[source] = 0
         queue = [source]
@@ -7422,10 +11292,12 @@ def tarjan_scc(graph):
         return level[sink] != -1, level
     
     def dfs_blocking_flow(u, sink, flow, level, start):
+        """Find blocking flow using DFS with current edge optimization"""
         if u == sink:
             return flow
         
-        # MISSING OPTIMIZATION - current edge optimization
+        # KEY OPTIMIZATION: Current edge optimization
+        # start[u] tracks next edge to examine from vertex u
         for i in range(start[u], len(graph)):
             v = i
             if level[v] == level[u] + 1 and graph[u][v] > 0:
@@ -7435,24 +11307,81 @@ def tarjan_scc(graph):
                     graph[u][v] -= pushed
                     graph[v][u] += pushed
                     return pushed
-            start[u] += 1  # Current edge optimization
+            start[u] += 1  # Skip this edge in future calls
         
         return 0
     
     max_flow = 0
+    # Phase-based approach: Build level graph, then find blocking flow
     while True:
         reachable, level = bfs_level()
         if not reachable:
             break
         
-        start = [0] * len(graph)
+        start = [0] * len(graph)  # Reset current edge pointers
+        # Find all possible flow in this level graph
         while True:
             flow = dfs_blocking_flow(source, sink, float('inf'), level, start)
             if flow == 0:
                 break
             max_flow += flow
     
-    return max_flow`,
+    return max_flow
+
+# EDMONDS-KARP ALGORITHM - BFS + Single Path
+def edmonds_karp(graph, source, sink):
+    """
+    Edmonds-Karp: O(VE²) - finds one shortest path per iteration
+    Simpler but slower than Dinic's algorithm
+    """
+    def bfs_shortest_path():
+        """Find single shortest augmenting path using BFS"""
+        parent = [-1] * len(graph)
+        visited = [False] * len(graph)
+        queue = [source]
+        visited[source] = True
+        
+        while queue:
+            u = queue.pop(0)
+            for v in range(len(graph)):
+                if not visited[v] and graph[u][v] > 0:
+                    parent[v] = u
+                    visited[v] = True
+                    queue.append(v)
+                    if v == sink:
+                        return parent
+        return None
+    
+    max_flow = 0
+    # Path-based approach: Find one path, push flow, repeat
+    while True:
+        parent = bfs_shortest_path()
+        if parent is None:
+            break
+        
+        # Find bottleneck capacity along the path
+        path_flow = float('inf')
+        s = sink
+        while s != source:
+            path_flow = min(path_flow, graph[parent[s]][s])
+            s = parent[s]
+        
+        # Update residual graph along the path
+        v = sink
+        while v != source:
+            u = parent[v]
+            graph[u][v] -= path_flow
+            graph[v][u] += path_flow
+            v = parent[v]
+        
+        max_flow += path_flow
+    
+    return max_flow
+
+# KEY DIFFERENCES COMPARISON:
+# Dinic's: Level graph → Blocking flow → Repeat (O(V²E))
+# Edmonds-Karp: Single path → Push flow → Repeat (O(VE²))
+# Dinic's is faster due to processing multiple paths per level`,
       options: [
         "Current edge optimization: start[u] tracks next edge to try",
         "Use priority queue in BFS",
@@ -7483,48 +11412,97 @@ def tarjan_scc(graph):
       functionName: "min_cut_applications",
       difficulty: "Medium",
       question: "How does max-flow min-cut theorem apply to image segmentation?",
-      code: `def image_segmentation_max_flow(image, foreground_seeds, background_seeds):
+      code: `# IMAGE SEGMENTATION USING MAX-FLOW MIN-CUT
+def image_segmentation_max_flow(image, foreground_seeds, background_seeds):
+    """
+    Image segmentation using max-flow min-cut theorem
+    Key insight: Min-cut separates foreground from background optimally
+    """
     height, width = len(image), len(image[0])
     
-    # Create flow network:
-    # - Each pixel is a vertex
-    # - Add source (connected to foreground seeds)
-    # - Add sink (connected to background seeds)  
-    # - Edge capacities based on pixel similarity
-    
     def pixel_to_node(i, j):
+        """Convert 2D pixel coordinates to 1D node index"""
         return i * width + j
     
     def build_capacity_graph():
+        """Build flow network from image pixels"""
         n = height * width + 2  # +2 for source and sink
         source, sink = n - 2, n - 1
         capacity = [[0] * n for _ in range(n)]
         
-        # Connect source to foreground seeds
+        # Step 1: Connect source to foreground seeds (infinite capacity)
         for i, j in foreground_seeds:
             capacity[source][pixel_to_node(i, j)] = float('inf')
         
-        # Connect background seeds to sink
+        # Step 2: Connect background seeds to sink (infinite capacity)
         for i, j in background_seeds:
             capacity[pixel_to_node(i, j)][sink] = float('inf')
         
-        # MISSING LOGIC - how to set edge weights between pixels?
+        # Step 3: Connect adjacent pixels with similarity-based capacity
         for i in range(height):
             for j in range(width):
-                for di, dj in [(0,1), (1,0), (0,-1), (-1,0)]:
+                for di, dj in [(0,1), (1,0), (0,-1), (-1,0)]:  # 4-connectivity
                     ni, nj = i + di, j + dj
                     if 0 <= ni < height and 0 <= nj < width:
-                        # Edge weight based on pixel similarity
+                        # KEY: Edge weight based on pixel similarity
+                        # High similarity = high capacity = less likely to cut
                         similarity = 255 - abs(image[i][j] - image[ni][nj])
                         capacity[pixel_to_node(i,j)][pixel_to_node(ni,nj)] = similarity
         
         return capacity, source, sink
     
+    def find_min_cut(capacity, source, sink):
+        """Find min-cut after max-flow to get segmentation"""
+        # Run BFS from source on residual graph
+        visited = [False] * len(capacity)
+        queue = [source]
+        visited[source] = True
+        
+        while queue:
+            u = queue.pop(0)
+            for v in range(len(capacity)):
+                if not visited[v] and capacity[u][v] > 0:
+                    visited[v] = True
+                    queue.append(v)
+        
+        # Pixels reachable from source = foreground
+        # Pixels not reachable = background
+        segmentation = []
+        for i in range(height):
+            row = []
+            for j in range(width):
+                node = pixel_to_node(i, j)
+                row.append('F' if visited[node] else 'B')  # F=foreground, B=background
+            segmentation.append(row)
+        
+        return segmentation
+    
+    # Build flow network and find max flow
     capacity, source, sink = build_capacity_graph()
     max_flow_value = edmonds_karp(capacity, source, sink)
     
-    # Min-cut gives segmentation boundary
-    return find_min_cut(capacity, source, sink)`,
+    # Min-cut gives optimal segmentation boundary
+    segmentation = find_min_cut(capacity, source, sink)
+    
+    return segmentation, max_flow_value
+
+# EXAMPLE USAGE:
+# 4x4 grayscale image (values 0-255)
+sample_image = [
+    [100, 120, 200, 220],  # Dark region → Light region
+    [110, 130, 210, 230],
+    [105, 125, 205, 225], 
+    [115, 135, 215, 235]
+]
+
+# User marks some pixels as foreground/background seeds
+foreground_seeds = [(0, 0), (1, 1)]  # Dark region
+background_seeds = [(0, 3), (1, 2)]  # Light region
+
+# Algorithm finds optimal cut separating dark from light regions
+segmentation, flow = image_segmentation_max_flow(
+    sample_image, foreground_seeds, background_seeds
+)`,
       options: [
         "Edge weights represent pixel similarity - higher for similar pixels",
         "Edge weights represent pixel differences - higher for different pixels",
@@ -7555,61 +11533,105 @@ def tarjan_scc(graph):
       functionName: "push_relabel_algorithm",
       difficulty: "Hard",
       question: "What's the key operation in push-relabel max flow algorithm?",
-      code: `def push_relabel_max_flow(graph, source, sink):
+      code: `# PUSH-RELABEL MAX FLOW ALGORITHM
+def push_relabel_max_flow(graph, source, sink):
+    """
+    Push-Relabel Algorithm: O(V²√E) - Local operations approach
+    Key operations: PUSH excess flow + RELABEL vertex heights
+    """
     n = len(graph)
-    capacity = [row[:] for row in graph]  # Copy capacity matrix
-    flow = [[0] * n for _ in range(n)]
-    excess = [0] * n
-    height = [0] * n
+    capacity = [row[:] for row in graph]  # Residual capacity matrix
+    flow = [[0] * n for _ in range(n)]    # Current flow matrix
+    excess = [0] * n                      # Excess flow at each vertex
+    height = [0] * n                      # Height labels for vertices
     
-    # Initialize
-    height[source] = n
-    for v in range(n):
-        if capacity[source][v] > 0:
-            flow[source][v] = capacity[source][v]
-            flow[v][source] = -capacity[source][v]
-            excess[v] = capacity[source][v]
+    def initialize():
+        """Initialize: Source height = n, push max flow from source"""
+        height[source] = n  # Source has highest height
+        
+        # Push maximum possible flow from source to neighbors
+        for v in range(n):
+            if capacity[source][v] > 0:
+                flow[source][v] = capacity[source][v]
+                flow[v][source] = -capacity[source][v]  # Reverse edge
+                excess[v] = capacity[source][v]         # Create excess
+                capacity[source][v] = 0                 # Update residual
+                capacity[v][source] = flow[source][v]   # Update reverse
     
     def push(u, v):
-        # MISSING LOGIC - how much flow to push?
-        delta = min(excess[u], capacity[u][v] - flow[u][v])
+        """PUSH: Move excess flow from u to v along admissible edge"""
+        # KEY OPERATION: Push minimum of excess and residual capacity
+        delta = min(excess[u], capacity[u][v])
+        
+        # Update flow and residual capacities
         flow[u][v] += delta
         flow[v][u] -= delta
+        capacity[u][v] -= delta
+        capacity[v][u] += delta
+        
+        # Update excess flow
         excess[u] -= delta
         excess[v] += delta
+        
+        return delta
     
     def relabel(u):
-        # Find minimum height of admissible neighbors
+        """RELABEL: Increase height of vertex u to enable pushing"""
+        # KEY OPERATION: Set height = min(neighbor heights) + 1
         min_height = float('inf')
         for v in range(n):
-            if capacity[u][v] - flow[u][v] > 0:
+            if capacity[u][v] > 0:  # Admissible edge exists
                 min_height = min(min_height, height[v])
+        
         height[u] = min_height + 1
+        return height[u]
     
-    # Main algorithm
+    def is_admissible(u, v):
+        """Check if edge (u,v) is admissible for pushing"""
+        return capacity[u][v] > 0 and height[u] == height[v] + 1
+    
+    # Step 1: Initialize
+    initialize()
+    
+    # Step 2: Main loop - process vertices with excess
+    iterations = 0
     while True:
-        # Find vertex with excess (not source/sink)
-        u = -1
+        # Find vertex with excess flow (not source/sink)
+        active_vertex = -1
         for i in range(n):
             if i != source and i != sink and excess[i] > 0:
-                u = i
+                active_vertex = i
                 break
         
-        if u == -1:
-            break
+        if active_vertex == -1:
+            break  # No more excess flow to process
         
-        # Try to push
+        u = active_vertex
         pushed = False
+        
+        # Try to PUSH along admissible edges
         for v in range(n):
-            if capacity[u][v] - flow[u][v] > 0 and height[u] == height[v] + 1:
+            if is_admissible(u, v):
                 push(u, v)
                 pushed = True
                 break
         
+        # If no push possible, RELABEL the vertex
         if not pushed:
             relabel(u)
+        
+        iterations += 1
     
-    return sum(flow[source])`,
+    # Maximum flow = total flow out of source
+    max_flow = sum(max(0, flow[source][v]) for v in range(n))
+    return max_flow, iterations
+
+# KEY CONCEPTS:
+# 1. PUSH: Move excess flow along admissible edges (height[u] = height[v] + 1)
+# 2. RELABEL: Increase vertex height when no push is possible
+# 3. Admissible edge: Residual capacity > 0 AND height difference = 1
+# 4. Local operations: No global path finding like Ford-Fulkerson
+# 5. Preflow: Flow conservation violated temporarily (excess allowed)`,
       options: [
         "Push excess flow along admissible edges and relabel vertices",
         "Find augmenting paths using BFS",
@@ -9032,8 +13054,8 @@ def tarjan_scc(graph):
       </header>
 
       {/* Main Game Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Question Panel */}
           <div className="lg:col-span-1 space-y-6">
             {/* Progress & Stats */}
@@ -9723,6 +13745,349 @@ def tarjan_scc(graph):
                           </table>
                         </div>
                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Bridge Detection Optimization Visualization Button - Only for question 40 */}
+              {currentQuestion.id === 40 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowBridgeOptimizationVisualization(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showBridgeOptimizationVisualization[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25 ring-2 ring-green-300'
+                          : 'bg-gradient-to-r from-green-50/70 to-emerald-50/70 text-green-700 hover:from-green-100/80 hover:to-emerald-100/80 dark:from-green-900/15 dark:to-emerald-900/15 dark:text-green-300 dark:hover:from-green-900/25 dark:hover:to-emerald-900/25 border border-green-200/60 dark:border-green-800/40 hover:border-green-300/80 dark:hover:border-green-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showBridgeOptimizationVisualization[currentQuestion.id]
+                            ? 'bg-white/25' 
+                            : 'bg-green-100/70 dark:bg-green-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            🚀 Visualize Bridge Detection Optimization
+                          </div>
+                          <div className="text-xs opacity-75">
+                            Dense vs Sparse approach with enumerate() optimization
+                          </div>
+                        </div>
+                      </div>
+                      {showBridgeOptimizationVisualization[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-green-300/20 to-emerald-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showBridgeOptimizationVisualization[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <BridgeOptimizationVisualization questionId={currentQuestion.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Ford-Fulkerson Visualization Button - Only for question 4 */}
+              {currentQuestion.id === 4 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowFordFulkersonVisualization(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showFordFulkersonVisualization[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 ring-2 ring-blue-300'
+                          : 'bg-gradient-to-r from-blue-50/70 to-indigo-50/70 text-blue-700 hover:from-blue-100/80 hover:to-indigo-100/80 dark:from-blue-900/15 dark:to-indigo-900/15 dark:text-blue-300 dark:hover:from-blue-900/25 dark:hover:to-indigo-900/25 border border-blue-200/60 dark:border-blue-800/40 hover:border-blue-300/80 dark:hover:border-blue-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showFordFulkersonVisualization[currentQuestion.id]
+                            ? 'bg-white/25' 
+                            : 'bg-blue-100/70 dark:bg-blue-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            🌊 Visualize Ford-Fulkerson Algorithm
+                          </div>
+                          <div className="text-xs opacity-75">
+                            Maximum flow with BFS path finding and residual graph updates
+                          </div>
+                        </div>
+                      </div>
+                      {showFordFulkersonVisualization[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-300/20 to-indigo-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showFordFulkersonVisualization[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <FordFulkersonVisualization questionId={currentQuestion.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Edmonds-Karp vs Ford-Fulkerson Comparison Visualization for question 5 */}
+              {currentQuestion.id === 5 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowEdmondsKarpComparison(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showEdmondsKarpComparison[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-purple-500 to-blue-600 text-white shadow-lg shadow-purple-500/25 ring-2 ring-purple-300'
+                          : 'bg-gradient-to-r from-purple-50/70 to-blue-50/70 text-purple-700 hover:from-purple-100/80 hover:to-blue-100/80 dark:from-purple-900/15 dark:to-blue-900/15 dark:text-purple-300 dark:hover:from-purple-900/25 dark:hover:to-blue-900/25 border border-purple-200/60 dark:border-purple-800/40 hover:border-purple-300/80 dark:hover:border-purple-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showEdmondsKarpComparison[currentQuestion.id]
+                            ? 'bg-white/30 backdrop-blur-sm' 
+                            : 'bg-purple-100/70 dark:bg-purple-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            ⚡ Compare Edmonds-Karp vs Ford-Fulkerson
+                          </div>
+                          <div className="text-xs opacity-75">
+                            See the difference between BFS and DFS path finding strategies
+                          </div>
+                        </div>
+                      </div>
+                      {showEdmondsKarpComparison[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-300/20 to-blue-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showEdmondsKarpComparison[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <EdmondsKarpComparisonVisualization questionId={currentQuestion.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hopcroft-Karp vs Basic Bipartite Matching Visualization for question 34 */}
+              {currentQuestion.id === 34 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowHopcroftKarpComparison(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showHopcroftKarpComparison[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-500/25 ring-2 ring-indigo-300 border border-indigo-400'
+                          : 'bg-gradient-to-r from-indigo-50/70 to-purple-50/70 text-indigo-700 hover:from-indigo-100/80 hover:to-purple-100/80 dark:from-indigo-900/15 dark:to-purple-900/15 dark:text-indigo-300 dark:hover:from-indigo-900/25 dark:hover:to-purple-900/25 border border-indigo-200/60 dark:border-indigo-800/40 hover:border-indigo-300/80 dark:hover:border-indigo-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showHopcroftKarpComparison[currentQuestion.id]
+                            ? 'bg-white/30 backdrop-blur-sm' 
+                            : 'bg-indigo-100/70 dark:bg-indigo-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            🎯 Compare Hopcroft-Karp vs Basic Matching
+                          </div>
+                          <div className="text-xs opacity-75">
+                            See BFS layering optimization for multiple augmenting paths
+                          </div>
+                        </div>
+                      </div>
+                      {showHopcroftKarpComparison[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-300/20 to-purple-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showHopcroftKarpComparison[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <HopcroftKarpComparisonVisualization questionId={currentQuestion.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Image Segmentation Max-Flow Visualization for question 45 */}
+              {currentQuestion.id === 45 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowImageSegmentationVisualization(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showImageSegmentationVisualization[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-green-400 to-blue-600 text-white shadow-lg shadow-green-500/25 ring-2 ring-green-300'
+                          : 'bg-gradient-to-r from-green-50/70 to-blue-50/70 text-green-700 hover:from-green-100/80 hover:to-blue-100/80 dark:from-green-900/15 dark:to-blue-900/15 dark:text-green-300 dark:hover:from-green-900/25 dark:hover:to-blue-900/25 border border-green-200/60 dark:border-green-800/40 hover:border-green-300/80 dark:hover:border-green-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showImageSegmentationVisualization[currentQuestion.id]
+                            ? 'bg-white/30 backdrop-blur-sm' 
+                            : 'bg-green-100/70 dark:bg-green-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            🖼️ Visualize Image Segmentation Max-Flow
+                          </div>
+                          <div className="text-xs opacity-75">
+                            See how max-flow min-cut separates foreground from background
+                          </div>
+                        </div>
+                      </div>
+                      {showImageSegmentationVisualization[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-green-300/20 to-blue-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showImageSegmentationVisualization[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <ImageSegmentationVisualization questionId={currentQuestion.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Dinic's vs Edmonds-Karp Comparison Visualization for question 44 */}
+              {currentQuestion.id === 44 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowDinicComparison(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showDinicComparison[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-purple-400 to-orange-500 text-white shadow-lg shadow-purple-500/25 ring-2 ring-orange-400'
+                          : 'bg-gradient-to-r from-purple-50/70 to-orange-50/70 text-purple-700 hover:from-purple-100/80 hover:to-orange-100/80 dark:from-purple-900/15 dark:to-orange-900/15 dark:text-purple-300 dark:hover:from-purple-900/25 dark:hover:to-orange-900/25 border border-purple-200/60 dark:border-purple-800/40 hover:border-purple-300/80 dark:hover:border-purple-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showDinicComparison[currentQuestion.id]
+                            ? 'bg-white/30 backdrop-blur-sm' 
+                            : 'bg-purple-100/70 dark:bg-purple-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            ⚡ Compare Dinic's vs Edmonds-Karp
+                          </div>
+                          <div className="text-xs opacity-75">
+                            See level graphs vs single path approach for max flow
+                          </div>
+                        </div>
+                      </div>
+                      {showDinicComparison[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-300/20 to-orange-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showDinicComparison[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <DinicComparisonVisualization questionId={currentQuestion.id} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Push-Relabel Visualization for question 46 */}
+              {currentQuestion.id === 46 && (
+                <div className="mb-6">
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowPushRelabelVisualization(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: !prev[currentQuestion.id]
+                      }))}
+                      className={`group relative px-4 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                        showPushRelabelVisualization[currentQuestion.id]
+                          ? 'bg-gradient-to-r from-orange-300 to-red-500 text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-1000'
+                          : 'bg-gradient-to-r from-orange-50/70 to-red-50/70 text-orange-700 hover:from-orange-100/80 hover:to-red-100/80 dark:from-orange-900/15 dark:to-red-900/15 dark:text-orange-300 dark:hover:from-orange-900/25 dark:hover:to-red-900/25 border border-orange-200/60 dark:border-orange-800/40 hover:border-orange-300/80 dark:hover:border-orange-700/60 shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <div className={`mr-3 p-1.5 rounded ${
+                          showPushRelabelVisualization[currentQuestion.id]
+                            ? 'bg-white/30 backdrop-blur-sm' 
+                            : 'bg-orange-100/70 dark:bg-orange-800/30'
+                        }`}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                          </svg>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold">
+                            🚀 Push-Relabel Algorithm Walkthrough
+                          </div>
+                          <div className="text-xs opacity-75">
+                            See local push & relabel operations in action
+                          </div>
+                        </div>
+                      </div>
+                      {showPushRelabelVisualization[currentQuestion.id] && (
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-orange-300/20 to-red-400/20 animate-pulse"></div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Render the visualization if selected */}
+                  {showPushRelabelVisualization[currentQuestion.id] && (
+                    <div className="mb-4">
+                      <PushRelabelVisualization questionId={currentQuestion.id} />
                     </div>
                   )}
                 </div>
