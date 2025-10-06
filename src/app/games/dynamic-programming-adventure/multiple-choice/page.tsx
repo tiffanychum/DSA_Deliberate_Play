@@ -304,16 +304,43 @@ const DPMultipleChoiceGame = () => {
       functionName: "findIntegers (Fibonacci Numbers)",
       question: "Why does the Fibonacci-based solution work for counting numbers without consecutive 1s?",
       code: `def findIntegersFib(num):
+    # Key insight: This is related to Fibonacci sequence!
+    # f(n) = f(n-1) + f(n-2) for numbers without consecutive 1s
+    
     binary = bin(num)[2:]
     n = len(binary)
     
+    # Precompute Fibonacci-like sequence
+    # fib[i] = Append 0 to ANY previous pattern
+	# fib2[i] = Append 1 only to patterns ending with 0
+
+
     fib = [0] * (n + 2)
     fib2 = [0] * (n + 2)
     
     fib[0] = fib2[0] = 1
     for i in range(1, n + 2):
-        fib[i] = fib[i-1] + fib2[i-1]  # Can append 0 to any pattern
-        fib2[i] = fib[i-1]             # Can append 1 only to patterns ending in 0`,
+        fib[i] = fib[i-1] + fib2[i-1]
+        fib2[i] = fib[i-1]
+    
+    # Count valid numbers ≤ num using digit DP
+    result = 0
+    prev_bit = 0
+    
+    for i in range(n):
+        if binary[i] == '1':
+            # "How many valid ways to fill (n - i - 1) remaining positions"
+            result += fib[n - i - 1]
+            
+            # Check if we can continue (no consecutive 1s)
+            if prev_bit == 1:
+                return result  # Cannot place 1 after 1
+            
+            prev_bit = 1
+        else:
+            prev_bit = 0
+    
+    return result + 1  # +1 for the number itself`,
       options: [
         "Because Fibonacci numbers count binary strings naturally",
         "Because valid binary strings follow the Fibonacci recurrence: f(n) = f(n-1) + f(n-2)",
@@ -509,26 +536,42 @@ const DPMultipleChoiceGame = () => {
       topic: "Digit DP",
       functionName: "atMostNGivenDigitSet",
       question: "What should the base case return when pos == n?",
-      code: `def atMostNGivenDigitSet(digits, N):
+      code: `def atMostNClean(digits, N):
+    digits = sorted(digits)  # Ensure sorted order
     str_n = str(N)
     n = len(str_n)
-    memo = {}
     
+    @lru_cache(None)
     def dp(pos, tight, started):
         if pos == n:
-            return ???  # What should this return?
+            return ???
         
-        if (pos, tight, started) in memo:
-            return memo[(pos, tight, started)]`,
+        result = 0
+        limit = int(str_n[pos]) if tight else 9
+        
+        # Don't place digit (only if not started - for leading zeros)
+        if not started:
+            result += dp(pos + 1, False, False)
+        
+        # Place each valid digit
+        for d in digits:
+            digit = int(d)
+            if digit > limit:
+                break
+            result += dp(pos + 1, tight and digit == limit, True)
+        
+        return result
+    
+    return dp(0, True, False)`,
       options: [
         "1 if started else 0",
         "1",
         "0",
         "started"
       ],
-      correctAnswer: 0,
+      correctAnswer: 3,
       hint: "We should count this as a valid number only if we've actually formed a number (not just leading zeros).",
-      explanation: "Return '1 if started else 0' because we count it as valid only if we've started placing digits (started=True). If we haven't placed any digits (all leading zeros), it's not a valid number."
+      explanation: "Return 'started' because we count it as valid only if we've started placing digits (started=True). If we haven't placed any digits (all leading zeros), it's not a valid number."
     },
     {
       id: 15,
@@ -613,7 +656,7 @@ const DPMultipleChoiceGame = () => {
             "It's just a coding preference"
           ],
           correctAnswer: 0,
-          explanation: "We need 'count' as a state parameter because different paths can have different counts at the same position, and memoization needs to distinguish between these different states."
+          explanation: "We need 'count' as a state parameter because different paths can have different counts at the same position, and memoization needs to distinguish between these different states. As for line result += dp(pos + 1, new_tight, new_count), Different execution paths can have same (pos, tight) but different counts"
         },
         {
           question: "What would change if we wanted to count digit '0' instead?",
@@ -939,7 +982,6 @@ def countNumbersWithUniqueDigitsDP(n):
                 is_new_digit = not (mask & (1 << digit))
                 new_mask = mask | (1 << digit)
                 # MISSING LINE HERE - what should new_distinct_count be?
-                new_distinct_count = distinct_count + (1 if is_new_digit else 0)
             else:
                 new_mask = mask
                 new_distinct_count = distinct_count
@@ -1044,7 +1086,7 @@ def countNumbersWithUniqueDigitsDP(n):
             "Never, it's always needed"
           ],
           correctAnswer: 0,
-          explanation: "We can omit 'started' when leading zeros don't affect our constraint (e.g., when we want to count digit occurrences including leading zeros, or when we're only counting numbers of a fixed length)."
+          explanation: "We can omit 'started' when leading zeros don't affect our constraint (e.g., when we want to count digit occurrences including leading zeros, or when we're only counting numbers of a fixed length like counting digit one in N length)."
         }
       ]
     },
@@ -1074,7 +1116,6 @@ def countNumbersWithUniqueDigitsDP(n):
             new_tight = tight and (digit == limit)
             new_started = started or digit > 0
             # MISSING LINE HERE - how to update digit_sum?
-            new_digit_sum = digit_sum + digit if new_started else digit_sum
             
             result += dp(pos + 1, new_tight, new_started, new_digit_sum)
         
@@ -1111,7 +1152,35 @@ def countNumbersWithUniqueDigitsDP(n):
       functionName: "countNumbersWithDigitProduct",
       difficulty: "Hard",
       question: "What's the missing line for counting numbers whose digit product equals P?",
-      code: `def countNumbersWithDigitProduct(n, p):
+      code: `def countNumbersContaining0(n):
+    """Count numbers ≤ n that contain at least one digit 0"""
+    digits = str(n)
+    length = len(digits)
+    memo = {}
+    
+    def dp(pos, tight, started, has_zero):
+        if pos == length:
+            return 1 if started and has_zero else 0
+        
+        if (pos, tight, started, has_zero) in memo:
+            return memo[(pos, tight, started, has_zero)]
+        
+        limit = int(digits[pos]) if tight else 9
+        result = 0
+        
+        for digit in range(0, limit + 1):
+            new_tight = tight and (digit == limit)
+            new_started = started or digit > 0
+            new_has_zero = has_zero or (digit == 0 and new_started)
+            
+            result += dp(pos + 1, new_tight, new_started, new_has_zero)
+        
+        memo[(pos, tight, started, has_zero)] = result
+        return result
+    
+    return dp(0, True, False, False)
+
+      def countNumbersWithDigitProduct(n, p):
     if p == 0:
         # Special case: count numbers containing digit 0
         return countNumbersContaining0(n)
@@ -1196,7 +1265,7 @@ def countNumbersWithUniqueDigitsDP(n):
         
         for digit in range(0, limit + 1):
             # MISSING CONDITION HERE - when is digit valid?
-            if started and digit < last_digit:
+
                 continue
             
             new_tight = tight and (digit == limit)
@@ -1299,7 +1368,8 @@ def countNumbersWithUniqueDigitsDP(n):
       functionName: "countNumbersWithMaxDigit",
       difficulty: "Medium",
       question: "What's the missing line for counting numbers where the maximum digit is exactly K?",
-      code: `def countNumbersWithMaxDigit(n, k):
+      code: ` # i.e. countNumbersWithMaxDigit(100, 5) = 27 # Numbers: 5, 15, 25, 35, 45, 50-55, etc.
+      def countNumbersWithMaxDigit(n, k):
     digits = str(n)
     length = len(digits)
     memo = {}
@@ -4039,7 +4109,7 @@ def implementationChoice4():
         # Update all amounts that can use this coin
         for curr_amount in range(coin, amount + 1):
             # MISSING LINE HERE - how to update dp[curr_amount]?
-            dp[curr_amount] = min(dp[curr_amount], dp[curr_amount - coin] + 1)
+
     
     return dp[amount] if dp[amount] != float('inf') else -1`,
       options: [
@@ -4147,7 +4217,7 @@ def implementationChoice4():
         "target_sum = target // 2"
       ],
       correctAnswer: 0,
-      hint: "Think about the relationship: P - N = target and P + N = total, where P is positive subset sum.",
+      hint: "Think about the relationship: P - N = target and P + N = total, where P is positive subset sum. If (total + target) % 2 != 0, then (total + target) / 2 is not an integer, which means there's no way to select a subset with that exact sum",
       explanation: "If P is the sum of positive numbers and N is the sum of negative numbers, then P - N = target and P + N = total. Solving these equations: P = (total + target) / 2.",
       followUpQuestions: [
         {
@@ -4612,7 +4682,6 @@ def data_parallelism():
         # Update states (order matters - use previous values)
         new_hold = max(hold, -prices[i])      # Keep holding or buy today
         # MISSING LINE HERE - how to update sold state?
-        new_sold = max(sold, hold + prices[i]) # Keep not holding or sell today
         
         hold, sold = new_hold, new_sold
     
@@ -4660,7 +4729,7 @@ def data_parallelism():
         new_hold = max(hold, rest - prices[i])     # Keep holding or buy today
         new_sold = hold + prices[i]                # Sell today (must have been holding)
         # MISSING LINE HERE - how to update rest state?
-        new_rest = max(rest, sold)                 # Keep resting or finish cooldown
+        # Keep resting or finish cooldown
         
         hold, sold, rest = new_hold, new_sold, new_rest
     
@@ -4810,7 +4879,7 @@ def data_parallelism():
     
     # dp[day][holding][transactions] = max profit
     dp = [[[0 for _ in range(max_transactions + 1)] 
-           for _ in range(2)] for _ in range(n + 1)]
+           for _ in range(2)] for _ in range(n + 1)] #0 or 1 for holding
     
     for day in range(n):
         for holding in range(2):
@@ -5231,7 +5300,7 @@ def approximation_algorithms():
             left -= 1
             right += 1
         # MISSING LINE HERE - what should we return?
-        return right - left - 1  # Length of palindrome
+        # Length of palindrome
     
     for i in range(len(s)):
         # Check for odd-length palindromes (center at i)
@@ -5291,7 +5360,7 @@ def approximation_algorithms():
             # Try each k as last balloon to burst in (i,j)
             for k in range(i + 1, j):
                 # MISSING LINE HERE - how to calculate coins for bursting k last?
-                coins = nums[i] * nums[k] * nums[j]
+
                 dp[i][j] = max(dp[i][j], 
                              dp[i][k] + dp[k][j] + coins)
     
@@ -5340,7 +5409,7 @@ def approximation_algorithms():
             # Try all possible split points
             for k in range(i, j):
                 # MISSING LINE HERE - how to calculate cost?
-                cost = dp[i][k] + dp[k + 1][j] + p[i - 1] * p[k] * p[j]
+
                 dp[i][j] = min(dp[i][j], cost)
     
     return dp[1][n]`,

@@ -269,13 +269,14 @@ def quicksort(arr, low=0, high=None):
     },
     {
       id: 'graph-explorer',
-      name: 'Graph Explorer',
-      description: 'Navigate through a maze using graph traversal algorithms',
-      icon: '🧭',
+      name: 'Graph Algorithm Adventure',
+      description: 'Master graph algorithms through interactive games and challenges',
+      icon: '🕸️',
       difficulty: 'Medium',
       type: 'graph-traversal',
-      xp: 20,
-      algorithm: 'bfs',
+      xp: 30,
+      algorithm: 'graph_algorithms',
+      url: '/games/graph-adventure',
       pythonCode: [
         {
           step: 'BFS Initialization',
@@ -1931,16 +1932,16 @@ def add_one(n):
             {selectedGame === 'graph-explorer' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-                  Graph Explorer Game
+                  Graph Algorithm Adventure
                 </h2>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Click the button below to launch our interactive Graph Explorer game where you can navigate through a maze using graph traversal algorithms!
+                  Master graph algorithms through multiple interactive games including foundational challenges and multiple choice questions covering SCC, Max Flow, BFS/DFS, Shortest Paths, MST, and more!
                 </p>
                 <Link 
-                  href="/games/graph-explorer" 
-                  className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all"
+                  href="/games/graph-adventure" 
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-medium rounded-lg shadow-md hover:from-blue-700 hover:to-cyan-700 transition-all"
                 >
-                  Play Graph Explorer
+                  Enter Graph Adventure
                 </Link>
               </div>
             )}
