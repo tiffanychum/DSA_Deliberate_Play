@@ -314,7 +314,7 @@ const DPMultipleChoiceGame = () => {
     # fib[i] = Append 0 to ANY previous pattern
 	# fib2[i] = Append 1 only to patterns ending with 0
 
-
+    
     fib = [0] * (n + 2)
     fib2 = [0] * (n + 2)
     
@@ -6537,18 +6537,18 @@ def sliding_window_optimization():
                   const questionCount = topicQuestionCounts[topic] || 0;
                   
                   return (
-                    <button
-                      key={topic}
-                      onClick={() => setSelectedTopic(topic)}
+                  <button
+                    key={topic}
+                    onClick={() => setSelectedTopic(topic)}
                       className={`px-3 py-3 rounded-lg font-medium transition-all text-center ${
-                        selectedTopic === topic
+                      selectedTopic === topic
                           ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 shadow-lg transform scale-105'
                           : 'hover:scale-105'
                       } ${topicColors[topic] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
                     >
                       <div className="font-semibold text-sm">{displayName}</div>
                       <div className="text-xs opacity-75 mt-1">{questionCount}Q</div>
-                    </button>
+                  </button>
                   );
                 })}
               </div>

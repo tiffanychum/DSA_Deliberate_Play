@@ -366,13 +366,14 @@ def bfs(graph, start):
     },
     {
       id: 'linked-list-puzzle',
-      name: 'Linked List Puzzle',
-      description: 'Rearrange linked list nodes to solve puzzles and complete patterns',
+      name: 'Linked List Adventure',
+      description: 'Master linked list algorithms through interactive games and challenges',
       icon: '🔗',
       difficulty: 'Medium',
       type: 'linked-list',
       xp: 20,
       algorithm: 'linked_list_ops',
+      url: '/games/linked-list-adventure',
       pythonCode: [
         {
           step: 'Node Definition',
@@ -443,13 +444,14 @@ class LinkedList:
     },
     {
       id: 'tree-balancer',
-      name: 'Tree Balancer',
-      description: 'Balance binary search trees to optimize search operations',
+      name: 'Tree Algorithm Adventure',
+      description: 'Master tree algorithms through interactive games and challenges',
       icon: '🌳',
       difficulty: 'Hard',
       type: 'tree-traversal',
       xp: 25,
       algorithm: 'tree_traversal',
+      url: '/games/tree-adventure',
       pythonCode: [
         {
           step: 'Tree Node Definition',
@@ -1821,7 +1823,7 @@ def add_one(n):
                         {selectedGame === 'sort-race' && 'Quicksort is a divide-and-conquer algorithm that works by selecting a pivot element and partitioning the array.'}
                         {selectedGame === 'binary-search-treasure' && 'Binary search efficiently finds items in a sorted array by repeatedly dividing the search space in half.'}
                         {selectedGame === 'graph-explorer' && 'BFS explores all vertices at the present depth before moving on to vertices at the next depth level.'}
-                        {selectedGame === 'linked-list-puzzle' && 'Linked lists are dynamic data structures that store elements in nodes with pointers to the next node.'}
+                        {selectedGame === 'linked-list-puzzle' && 'Linked list algorithms involve pointer manipulation, reversal operations, merging, and complex data structure design patterns.'}
                         {selectedGame === 'tree-balancer' && 'Tree traversal involves visiting every node in a tree data structure exactly once.'}
                         {selectedGame === 'dynamic-programming-challenge' && 'Dynamic programming breaks down a problem into simpler subproblems and stores the results to avoid redundant calculations.'}
                         {selectedGame === 'greedy-algorithms' && 'Greedy algorithms make locally optimal choices at each step with the hope of finding a global optimum.'}
@@ -1837,7 +1839,7 @@ def add_one(n):
                   {selectedGame === 'sort-race' && 'Watch how Quicksort partitions the array and recursively sorts each partition. Use the controls to play, pause, and step through the algorithm.'}
                   {selectedGame === 'binary-search-treasure' && 'Binary search efficiently finds elements in a sorted array by repeatedly dividing the search space in half. Watch how it narrows down the search range until it finds the target.'}
                   {selectedGame === 'graph-explorer' && 'Breadth-first search (BFS) explores a graph level by level, visiting all neighbors of a node before moving to the next level. Watch how it discovers nodes and builds the shortest path.'}
-                  {selectedGame === 'linked-list-puzzle' && 'Explore common linked list operations such as insertion, deletion, and search. See how each operation modifies the list structure.'}
+                  {selectedGame === 'linked-list-puzzle' && 'Master advanced linked list algorithms through interactive challenges. Learn reversal techniques, merge operations, cache design, and complex pointer manipulations through hands-on practice.'}
                   {selectedGame === 'tree-balancer' && 'Tree traversal explores all nodes in a tree in a specific order. This visualization shows inorder traversal, which visits left subtree, then the node itself, then the right subtree.'}
                   {selectedGame === 'dynamic-programming-challenge' && 'Dynamic programming solves complex problems by breaking them down into simpler subproblems. Study the Python implementation to understand how DP optimizes recursive solutions.'}
                   {selectedGame === 'greedy-algorithms' && 'Greedy algorithms make locally optimal choices at each stage. Watch how these choices lead to a global solution and study the Python implementation.'}
@@ -1948,32 +1950,32 @@ def add_one(n):
             {selectedGame === 'linked-list-puzzle' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-                  Linked List Puzzle Game
+                  Linked List Adventure
                 </h2>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Click the button below to launch our interactive Linked List Puzzle game where you can rearrange linked list nodes to solve puzzles and complete patterns!
+                  Master linked list algorithms through multiple interactive games including foundational challenges and multiple choice questions covering Reversal Operations, Copy & Clone, Merge Operations, Cache Design, Arithmetic Operations, Node Removal, and Intersection Detection!
                 </p>
                 <Link 
-                  href="/games/linked-list-puzzle" 
-                  className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all"
+                  href="/games/linked-list-adventure" 
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:from-emerald-700 hover:to-teal-700 transition-all"
                 >
-                  Play Linked List Puzzle
+                  Enter Linked List Adventure
                 </Link>
               </div>
             )}
             {selectedGame === 'tree-balancer' && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-                  Tree Balancer Game
+                  Tree Algorithm Adventure
                 </h2>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Click the button below to launch our interactive Tree Balancer game where you can balance binary search trees to optimize search operations!
+                  Master tree algorithms through multiple interactive games including foundational challenges and multiple choice questions covering Tree DP, LCA & Distance, BST Operations, Tree Traversals, Tree Construction, and more!
                 </p>
                 <Link 
-                  href="/games/tree-balancer" 
-                  className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all"
+                  href="/games/tree-adventure" 
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:from-green-700 hover:to-emerald-700 transition-all"
                 >
-                  Play Tree Balancer
+                  Enter Tree Adventure
                 </Link>
               </div>
             )}
