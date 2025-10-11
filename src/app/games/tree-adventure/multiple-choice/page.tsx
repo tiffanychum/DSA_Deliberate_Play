@@ -3932,13 +3932,21 @@ def deserialize(data):
       functionName: "generateTrees",
       difficulty: "Medium",
       question: "How do you generate all unique BSTs with n nodes?",
-      code: `def generateTrees(n):
+      code: `def generateTreesMemo(n):
+    if n == 0:
+        return []
+    
+    memo = {}
+    
     def generate(start, end):
         if start > end:
             return [None]
         
-        trees = []
-        # MISSING LOGIC - try each number as root
+        if (start, end) in memo:
+            return memo[(start, end)]
+        
+        result = []
+        
         for root_val in range(start, end + 1):
             left_trees = generate(start, root_val - 1)
             right_trees = generate(root_val + 1, end)
@@ -3948,12 +3956,11 @@ def deserialize(data):
                     root = TreeNode(root_val)
                     root.left = left
                     root.right = right
-                    trees.append(root)
+                    result.append(root)
         
-        return trees
+        memo[(start, end)] = result
+        return result
     
-    if n == 0:
-        return []
     return generate(1, n)`,
       options: [
         "Use dynamic programming with memoization",
@@ -4110,7 +4117,15 @@ def deserialize(data):
       functionName: "connect",
       difficulty: "Medium",
       question: "How do you populate next right pointers in perfect binary tree?",
-      code: `def connect(root):
+      code: `# Input: A perfect binary tree where all leaves are at the same level and every parent has two children
+# Output: Same tree with next pointers connecting nodes at the same level
+#       1 → NULL
+#      / \\
+#     2 → 3 → NULL
+#    / \\ / \\
+#   4→ 5→6→ 7 → NULL
+      
+def connect(root):
     if not root:
         return root
     
@@ -5700,7 +5715,7 @@ def deserialize(data):
                 </div>
               </div>
             
-              <div className="bg-gray-900 p-4 overflow-x-auto h-[680px] overflow-y-auto">
+              <div className="bg-gray-900 p-4 overflow-x-auto h-[660px] overflow-y-auto">
                 <pre className="text-green-400 text-sm leading-relaxed">
                   <code>{currentQuestion.code}</code>
                 </pre>

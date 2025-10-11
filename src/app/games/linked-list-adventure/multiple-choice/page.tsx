@@ -3,6 +3,2910 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 
+// ReverseKGroupVisualizer Component
+interface ListNode {
+  val: number;
+  next: ListNode | null;
+}
+
+interface VisualizationStep {
+  step: number;
+  description: string;
+  nodes: ListNode[];
+  currentNode: number | null;
+  groupStart: number | null;
+  groupEnd: number | null;
+  hasKNodesCount: number;
+  hasKNodesResult: boolean;
+  loopIteration: number;
+  isReversing: boolean;
+  reversedGroups: number[][];
+}
+
+const ReverseKGroupVisualizer: React.FC<{ k: number }> = ({ k }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+
+  // Create initial linked list: 1->2->3->4->5->6->7->8
+  const createInitialList = (): ListNode[] => {
+    const nodes: ListNode[] = [];
+    for (let i = 1; i <= 8; i++) {
+      nodes.push({ val: i, next: null });
+    }
+    for (let i = 0; i < nodes.length - 1; i++) {
+      nodes[i].next = nodes[i + 1];
+    }
+    return nodes;
+  };
+
+  const [originalNodes] = useState(createInitialList());
+
+  // hasKNodes function implementation
+  const hasKNodes = (start: ListNode | null, k: number): { hasK: boolean, count: number } => {
+    let count = 0;
+    let current = start;
+    while (current && count < k) {
+      count++;
+      current = current.next;
+    }
+    return { hasK: count === k, count };
+  };
+
+  // Generate visualization steps
+  const generateSteps = (): VisualizationStep[] => {
+    const steps: VisualizationStep[] = [];
+    const nodes = [...originalNodes];
+    let loopIteration = 1;
+    let currentPos = 0;
+    const reversedGroups: number[][] = [];
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial linked list: ${nodes.map(n => n.val).join(' -> ')}. We need to reverse every ${k} nodes.`,
+      nodes: [...nodes],
+      currentNode: null,
+      groupStart: null,
+      groupEnd: null,
+      hasKNodesCount: 0,
+      hasKNodesResult: false,
+      loopIteration: 0,
+      isReversing: false,
+      reversedGroups: []
+    });
+
+    // Simulate the algorithm
+    while (currentPos < nodes.length) {
+      const startNode = nodes[currentPos];
+      const { hasK, count } = hasKNodes(startNode, k);
+
+      // Show hasKNodes check
+      steps.push({
+        step: steps.length,
+        description: `Loop ${loopIteration}: Checking hasKNodes(node_${startNode.val}, ${k}). Counting nodes...`,
+        nodes: [...nodes],
+        currentNode: currentPos,
+        groupStart: currentPos,
+        groupEnd: null,
+        hasKNodesCount: 0,
+        hasKNodesResult: false,
+        loopIteration,
+        isReversing: false,
+        reversedGroups: [...reversedGroups]
+      });
+
+      // Show counting process
+      for (let i = 1; i <= Math.min(count, k); i++) {
+        steps.push({
+          step: steps.length,
+          description: `Loop ${loopIteration}: Counting node ${i}/${k} (value: ${nodes[currentPos + i - 1].val})`,
+          nodes: [...nodes],
+          currentNode: currentPos + i - 1,
+          groupStart: currentPos,
+          groupEnd: currentPos + i - 1,
+          hasKNodesCount: i,
+          hasKNodesResult: false,
+          loopIteration,
+          isReversing: false,
+          reversedGroups: [...reversedGroups]
+        });
+      }
+
+      // Show result of hasKNodes
+      steps.push({
+        step: steps.length,
+        description: `Loop ${loopIteration}: hasKNodes result: ${hasK} (found ${count}/${k} nodes)`,
+        nodes: [...nodes],
+        currentNode: currentPos,
+        groupStart: currentPos,
+        groupEnd: hasK ? currentPos + k - 1 : currentPos + count - 1,
+        hasKNodesCount: count,
+        hasKNodesResult: hasK,
+        loopIteration,
+        isReversing: false,
+        reversedGroups: [...reversedGroups]
+      });
+
+      if (hasK) {
+        // Show reversal process
+        const groupNodes = [];
+        for (let i = 0; i < k; i++) {
+          groupNodes.push(nodes[currentPos + i].val);
+        }
+        
+        steps.push({
+          step: steps.length,
+          description: `Loop ${loopIteration}: Reversing group [${groupNodes.join(', ')}]`,
+          nodes: [...nodes],
+          currentNode: currentPos,
+          groupStart: currentPos,
+          groupEnd: currentPos + k - 1,
+          hasKNodesCount: k,
+          hasKNodesResult: true,
+          loopIteration,
+          isReversing: true,
+          reversedGroups: [...reversedGroups]
+        });
+
+        // Actually reverse the group in our visualization
+        const reversedGroup = [];
+        for (let i = k - 1; i >= 0; i--) {
+          reversedGroup.push(nodes[currentPos + i].val);
+        }
+        
+        for (let i = 0; i < k; i++) {
+          nodes[currentPos + i].val = reversedGroup[i];
+        }
+
+        reversedGroups.push([...reversedGroup]);
+
+        steps.push({
+          step: steps.length,
+          description: `Loop ${loopIteration}: Group reversed! New order: [${reversedGroup.join(', ')}]`,
+          nodes: [...nodes],
+          currentNode: null,
+          groupStart: currentPos,
+          groupEnd: currentPos + k - 1,
+          hasKNodesCount: k,
+          hasKNodesResult: true,
+          loopIteration,
+          isReversing: false,
+          reversedGroups: [...reversedGroups]
+        });
+
+        currentPos += k;
+        loopIteration++;
+      } else {
+        // Not enough nodes, algorithm stops
+        steps.push({
+          step: steps.length,
+          description: `Loop ${loopIteration}: Not enough nodes (${count} < ${k}). Algorithm stops. Remaining nodes stay unchanged.`,
+          nodes: [...nodes],
+          currentNode: currentPos,
+          groupStart: currentPos,
+          groupEnd: currentPos + count - 1,
+          hasKNodesCount: count,
+          hasKNodesResult: false,
+          loopIteration,
+          isReversing: false,
+          reversedGroups: [...reversedGroups]
+        });
+        break;
+      }
+    }
+
+    // Final result
+    steps.push({
+      step: steps.length,
+      description: `Final result: ${nodes.map(n => n.val).join(' -> ')}. Total loops: ${loopIteration - 1}`,
+      nodes: [...nodes],
+      currentNode: null,
+      groupStart: null,
+      groupEnd: null,
+      hasKNodesCount: 0,
+      hasKNodesResult: false,
+      loopIteration: 0,
+      isReversing: false,
+      reversedGroups: [...reversedGroups]
+    });
+
+    return steps;
+  };
+
+  const [steps] = useState(generateSteps());
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1500);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🎯 Visualize Reverse K-Group Algorithm
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-blue-800 dark:text-blue-200">
+          Reverse K-Group Visualization (k = {k})
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Loop:</span>
+            <span className="ml-2">{currentStepData.loopIteration || 'N/A'}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">hasKNodes Count:</span>
+            <span className="ml-2">{currentStepData.hasKNodesCount}/{k}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Result:</span>
+            <span className={`ml-2 ${currentStepData.hasKNodesResult ? 'text-green-600' : 'text-red-600'}`}>
+              {currentStepData.hasKNodesResult ? '✓ Reverse' : '✗ Skip'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked List Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border overflow-x-auto">
+        <div className="flex items-center space-x-2 min-w-max">
+          {currentStepData.nodes.map((node, index) => (
+            <React.Fragment key={index}>
+              <div
+                className={`
+                  flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300
+                  ${index === currentStepData.currentNode 
+                    ? 'bg-yellow-400 border-yellow-600 text-yellow-900 scale-110 shadow-lg' 
+                    : currentStepData.groupStart !== null && index >= currentStepData.groupStart && index <= (currentStepData.groupEnd || currentStepData.groupStart)
+                    ? currentStepData.isReversing
+                      ? 'bg-red-400 border-red-600 text-red-900 animate-pulse'
+                      : currentStepData.hasKNodesResult
+                      ? 'bg-green-400 border-green-600 text-green-900'
+                      : 'bg-blue-400 border-blue-600 text-blue-900'
+                    : 'bg-gray-200 dark:bg-gray-600 border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-300'
+                  }
+                `}
+              >
+                {node.val}
+              </div>
+              {index < currentStepData.nodes.length - 1 && (
+                <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* hasKNodes Function Demo */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-700">
+        <h4 className="font-bold text-green-800 dark:text-green-200 mb-2">hasKNodes Function:</h4>
+        <div className="font-mono text-sm text-green-700 dark:text-green-300">
+          <div>def hasKNodes(start, k):</div>
+          <div className="ml-4">count = 0</div>
+          <div className="ml-4">current = start</div>
+          <div className="ml-4">while current and count &lt; k:</div>
+          <div className="ml-8">count += 1  # Currently: {currentStepData.hasKNodesCount}</div>
+          <div className="ml-8">current = current.next</div>
+          <div className="ml-4">return count == k  # Returns: {currentStepData.hasKNodesResult.toString()}</div>
+        </div>
+      </div>
+
+      {/* Reversed Groups Summary */}
+      {currentStepData.reversedGroups.length > 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+          <h4 className="font-bold text-purple-800 dark:text-purple-200 mb-2">Reversed Groups:</h4>
+          <div className="flex flex-wrap gap-2">
+            {currentStepData.reversedGroups.map((group, index) => (
+              <div key={index} className="px-3 py-1 bg-purple-200 dark:bg-purple-700 rounded-full text-sm font-medium text-purple-800 dark:text-purple-200">
+                Group {index + 1}: [{group.join(', ')}]
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-400 border border-yellow-600 rounded-full"></div>
+            <span>Current Node</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-400 border border-blue-600 rounded-full"></div>
+            <span>Counting Group</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-400 border border-green-600 rounded-full"></div>
+            <span>Ready to Reverse</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-400 border border-red-600 rounded-full"></div>
+            <span>Reversing</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// RotateRightVisualizer Component
+interface RotateStep {
+  step: number;
+  description: string;
+  nodes: ListNode[];
+  currentNode: number | null;
+  tail: number | null;
+  newTail: number | null;
+  newHead: number | null;
+  length: number;
+  k: number;
+  effectiveK: number;
+  isCircular: boolean;
+  phase: 'finding_length' | 'making_circular' | 'finding_new_tail' | 'breaking_circle' | 'complete';
+}
+
+const RotateRightVisualizer: React.FC<{ initialK?: number }> = ({ initialK = 2 }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+  const [k, setK] = useState(initialK);
+
+  // Create initial linked list: 1->2->3->4->5
+  const createInitialList = (): ListNode[] => {
+    const nodes: ListNode[] = [];
+    for (let i = 1; i <= 5; i++) {
+      nodes.push({ val: i, next: null });
+    }
+    for (let i = 0; i < nodes.length - 1; i++) {
+      nodes[i].next = nodes[i + 1];
+    }
+    return nodes;
+  };
+
+  const [originalNodes] = useState(createInitialList());
+
+  // Generate visualization steps
+  const generateSteps = (rotateK: number): RotateStep[] => {
+    const steps: RotateStep[] = [];
+    const nodes = [...originalNodes];
+    const length = nodes.length;
+    const effectiveK = rotateK % length;
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial linked list: ${nodes.map(n => n.val).join(' -> ')}. We want to rotate right by k=${rotateK} places.`,
+      nodes: [...nodes],
+      currentNode: null,
+      tail: null,
+      newTail: null,
+      newHead: null,
+      length: 0,
+      k: rotateK,
+      effectiveK: 0,
+      isCircular: false,
+      phase: 'finding_length'
+    });
+
+    // Step 1: Find length and tail
+    steps.push({
+      step: 1,
+      description: `Step 1: Finding the length and tail of the list. Starting from head...`,
+      nodes: [...nodes],
+      currentNode: 0,
+      tail: null,
+      newTail: null,
+      newHead: null,
+      length: 1,
+      k: rotateK,
+      effectiveK: 0,
+      isCircular: false,
+      phase: 'finding_length'
+    });
+
+    // Show length counting process
+    for (let i = 1; i < length; i++) {
+      steps.push({
+        step: steps.length,
+        description: `Finding length: Currently at node ${nodes[i].val}, length = ${i + 1}`,
+        nodes: [...nodes],
+        currentNode: i,
+        tail: i === length - 1 ? i : null,
+        newTail: null,
+        newHead: null,
+        length: i + 1,
+        k: rotateK,
+        effectiveK: 0,
+        isCircular: false,
+        phase: 'finding_length'
+      });
+    }
+
+    // Calculate effective k
+    steps.push({
+      step: steps.length,
+      description: `Length found: ${length}. Calculate effective k: ${rotateK} % ${length} = ${effectiveK}${effectiveK === 0 ? ' (no rotation needed!)' : ''}`,
+      nodes: [...nodes],
+      currentNode: null,
+      tail: length - 1,
+      newTail: null,
+      newHead: null,
+      length: length,
+      k: rotateK,
+      effectiveK: effectiveK,
+      isCircular: false,
+      phase: 'finding_length'
+    });
+
+    if (effectiveK === 0) {
+      steps.push({
+        step: steps.length,
+        description: `Since effective k = 0, no rotation is needed. Return original list.`,
+        nodes: [...nodes],
+        currentNode: null,
+        tail: length - 1,
+        newTail: null,
+        newHead: null,
+        length: length,
+        k: rotateK,
+        effectiveK: effectiveK,
+        isCircular: false,
+        phase: 'complete'
+      });
+      return steps;
+    }
+
+    // Step 2: Make circular
+    steps.push({
+      step: steps.length,
+      description: `Step 2: Make the list circular by connecting tail (${nodes[length-1].val}) to head (${nodes[0].val})`,
+      nodes: [...nodes],
+      currentNode: null,
+      tail: length - 1,
+      newTail: null,
+      newHead: null,
+      length: length,
+      k: rotateK,
+      effectiveK: effectiveK,
+      isCircular: true,
+      phase: 'making_circular'
+    });
+
+    // Step 3: Find new tail position
+    const newTailPos = length - effectiveK - 1;
+    steps.push({
+      step: steps.length,
+      description: `Step 3: Find new tail at position (length - k - 1) = (${length} - ${effectiveK} - 1) = ${newTailPos}`,
+      nodes: [...nodes],
+      currentNode: null,
+      tail: length - 1,
+      newTail: null,
+      newHead: null,
+      length: length,
+      k: rotateK,
+      effectiveK: effectiveK,
+      isCircular: true,
+      phase: 'finding_new_tail'
+    });
+
+    // Show new tail finding process
+    for (let i = 0; i <= newTailPos; i++) {
+      steps.push({
+        step: steps.length,
+        description: `Finding new tail: Step ${i + 1}/${newTailPos + 1}, currently at node ${nodes[i].val}`,
+        nodes: [...nodes],
+        currentNode: i,
+        tail: length - 1,
+        newTail: i === newTailPos ? i : null,
+        newHead: null,
+        length: length,
+        k: rotateK,
+        effectiveK: effectiveK,
+        isCircular: true,
+        phase: 'finding_new_tail'
+      });
+    }
+
+    // Step 4: Identify new head
+    const newHeadPos = newTailPos + 1;
+    steps.push({
+      step: steps.length,
+      description: `New tail found at node ${nodes[newTailPos].val}. New head is next: node ${nodes[newHeadPos].val}`,
+      nodes: [...nodes],
+      currentNode: null,
+      tail: length - 1,
+      newTail: newTailPos,
+      newHead: newHeadPos,
+      length: length,
+      k: rotateK,
+      effectiveK: effectiveK,
+      isCircular: true,
+      phase: 'finding_new_tail'
+    });
+
+    // Step 5: Break the circle
+    steps.push({
+      step: steps.length,
+      description: `Step 4: Break the circular connection at new tail (${nodes[newTailPos].val}.next = None)`,
+      nodes: [...nodes],
+      currentNode: null,
+      tail: length - 1,
+      newTail: newTailPos,
+      newHead: newHeadPos,
+      length: length,
+      k: rotateK,
+      effectiveK: effectiveK,
+      isCircular: false,
+      phase: 'breaking_circle'
+    });
+
+    // Final result - simulate the rotation
+    const rotatedNodes = [...nodes];
+    const rotatedValues = [];
+    for (let i = 0; i < length; i++) {
+      rotatedValues.push(nodes[(newHeadPos + i) % length].val);
+    }
+    for (let i = 0; i < length; i++) {
+      rotatedNodes[i].val = rotatedValues[i];
+    }
+
+    steps.push({
+      step: steps.length,
+      description: `Final result: ${rotatedValues.join(' -> ')}. Successfully rotated right by ${effectiveK} places!`,
+      nodes: rotatedNodes,
+      currentNode: null,
+      tail: null,
+      newTail: null,
+      newHead: null,
+      length: length,
+      k: rotateK,
+      effectiveK: effectiveK,
+      isCircular: false,
+      phase: 'complete'
+    });
+
+    return steps;
+  };
+
+  const [steps, setSteps] = useState(() => generateSteps(k));
+
+  // Regenerate steps when k changes
+  useEffect(() => {
+    setSteps(generateSteps(k));
+    setCurrentStep(0);
+    setIsPlaying(false);
+  }, [k]);
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1800);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg hover:from-green-600 hover:to-teal-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔄 Visualize Rotate Right Algorithm
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-xl border border-green-200 dark:border-green-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-green-800 dark:text-green-200">
+          Rotate Right Visualization
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* K Value Selector */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="flex items-center gap-4 flex-wrap">
+          <label className="font-semibold text-green-700 dark:text-green-300">
+            Rotate by k =
+          </label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 7, 12].map(value => (
+              <button
+                key={value}
+                onClick={() => setK(value)}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                  k === value
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          <input
+            type="number"
+            value={k}
+            onChange={(e) => setK(Math.max(0, parseInt(e.target.value) || 0))}
+            className="w-16 px-2 py-1 border rounded text-center"
+            min="0"
+          />
+        </div>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Length:</span>
+            <span className="ml-2">{currentStepData.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">k:</span>
+            <span className="ml-2">{currentStepData.k}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Effective k:</span>
+            <span className="ml-2">{currentStepData.effectiveK}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-red-600 dark:text-red-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase.replace('_', ' ')}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked List Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border overflow-x-auto">
+        <div className="flex items-center justify-center">
+          <div className="flex items-center space-x-2 min-w-max">
+            {currentStepData.nodes.map((node, index) => (
+              <React.Fragment key={index}>
+                <div
+                  className={`
+                    flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                    ${index === currentStepData.currentNode 
+                      ? 'bg-yellow-400 border-yellow-600 text-yellow-900 scale-110 shadow-lg' 
+                      : index === currentStepData.tail
+                      ? 'bg-red-400 border-red-600 text-red-900'
+                      : index === currentStepData.newTail
+                      ? 'bg-purple-400 border-purple-600 text-purple-900'
+                      : index === currentStepData.newHead
+                      ? 'bg-green-400 border-green-600 text-green-900'
+                      : 'bg-gray-200 dark:bg-gray-600 border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-300'
+                    }
+                  `}
+                >
+                  {node.val}
+                  {/* Labels */}
+                  {index === currentStepData.tail && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-red-600 dark:text-red-400">
+                      TAIL
+                    </div>
+                  )}
+                  {index === currentStepData.newTail && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-purple-600 dark:text-purple-400">
+                      NEW TAIL
+                    </div>
+                  )}
+                  {index === currentStepData.newHead && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-green-600 dark:text-green-400">
+                      NEW HEAD
+                    </div>
+                  )}
+                </div>
+                {index < currentStepData.nodes.length - 1 && (
+                  <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          
+          {/* Circular connection indicator */}
+          {currentStepData.isCircular && (
+            <div className="ml-4 flex items-center">
+              <div className="text-2xl text-red-500 animate-pulse">↺</div>
+              <div className="ml-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                Circular
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>New Head Position:</strong> (length - k) from original head</div>
+          <div><strong>New Tail Position:</strong> (length - k - 1) from original head</div>
+          <div><strong>Why?</strong> Moving k positions right = new head is k positions from the end</div>
+          {currentStepData.effectiveK > 0 && (
+            <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-800/50 rounded">
+              <strong>Current calculation:</strong> New head at position ({currentStepData.length} - {currentStepData.effectiveK}) = {currentStepData.length - currentStepData.effectiveK}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'finding_length' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Find length and tail: length = {currentStepData.length}
+          </div>
+          <div className={currentStepData.phase === 'finding_length' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. Calculate effective k: {currentStepData.k} % {currentStepData.length} = {currentStepData.effectiveK}
+          </div>
+          <div className={currentStepData.phase === 'making_circular' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3. Make circular: tail.next = head
+          </div>
+          <div className={currentStepData.phase === 'finding_new_tail' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. Find new tail: position {currentStepData.length} - {currentStepData.effectiveK} - 1 = {currentStepData.length - currentStepData.effectiveK - 1}
+          </div>
+          <div className={currentStepData.phase === 'breaking_circle' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            5. Break circle: new_tail.next = None
+          </div>
+        </div>
+        </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-400 border border-yellow-600 rounded-full"></div>
+            <span>Current Node</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-400 border border-red-600 rounded-full"></div>
+            <span>Original Tail</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-purple-400 border border-purple-600 rounded-full"></div>
+            <span>New Tail</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-400 border border-green-600 rounded-full"></div>
+            <span>New Head</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ReverseEvenLengthVisualizer Component
+interface EvenLengthStep {
+  step: number;
+  description: string;
+  nodes: ListNode[];
+  currentNode: number | null;
+  groupStart: number | null;
+  groupEnd: number | null;
+  groupLength: number;
+  isEvenLength: boolean;
+  isReversing: boolean;
+  phase: 'scanning' | 'counting' | 'deciding' | 'reversing' | 'skipping' | 'complete';
+  processedGroups: { start: number; end: number; length: number; reversed: boolean }[];
+}
+
+const ReverseEvenLengthVisualizer: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+
+  // Create initial linked list with groups: [1,1,1] [2,2] [3] [4,4,4,4]
+  const createInitialList = (): ListNode[] => {
+    const values = [1, 1, 1, 2, 2, 3, 4, 4, 4, 4];
+    const nodes: ListNode[] = [];
+    for (let i = 0; i < values.length; i++) {
+      nodes.push({ val: values[i], next: null });
+    }
+    for (let i = 0; i < nodes.length - 1; i++) {
+      nodes[i].next = nodes[i + 1];
+    }
+    return nodes;
+  };
+
+  const [originalNodes] = useState(createInitialList());
+
+  // Generate visualization steps
+  const generateSteps = (): EvenLengthStep[] => {
+    const steps: EvenLengthStep[] = [];
+    const nodes = [...originalNodes];
+    const processedGroups: { start: number; end: number; length: number; reversed: boolean }[] = [];
+    let currentPos = 0;
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial list: ${nodes.map(n => n.val).join(' -> ')}. We'll group consecutive equal values and reverse only even-length groups.`,
+      nodes: [...nodes],
+      currentNode: null,
+      groupStart: null,
+      groupEnd: null,
+      groupLength: 0,
+      isEvenLength: false,
+      isReversing: false,
+      phase: 'scanning',
+      processedGroups: []
+    });
+
+    while (currentPos < nodes.length) {
+      const groupValue = nodes[currentPos].val;
+      let groupEnd = currentPos;
+      
+      // Find the end of current group
+      while (groupEnd < nodes.length - 1 && nodes[groupEnd + 1].val === groupValue) {
+        groupEnd++;
+      }
+      
+      const groupLength = groupEnd - currentPos + 1;
+      const isEvenLength = groupLength % 2 === 0;
+
+      // Show group identification
+      steps.push({
+        step: steps.length,
+        description: `Found group of ${groupValue}'s from position ${currentPos} to ${groupEnd}`,
+        nodes: [...nodes],
+        currentNode: currentPos,
+        groupStart: currentPos,
+        groupEnd: groupEnd,
+        groupLength: 0,
+        isEvenLength: false,
+        isReversing: false,
+        phase: 'scanning',
+        processedGroups: [...processedGroups]
+      });
+
+      // Show counting process
+      for (let i = currentPos; i <= groupEnd; i++) {
+        steps.push({
+          step: steps.length,
+          description: `Counting group: ${i - currentPos + 1}/${groupLength} nodes with value ${groupValue}`,
+          nodes: [...nodes],
+          currentNode: i,
+          groupStart: currentPos,
+          groupEnd: groupEnd,
+          groupLength: i - currentPos + 1,
+          isEvenLength: false,
+          isReversing: false,
+          phase: 'counting',
+          processedGroups: [...processedGroups]
+        });
+      }
+
+      // Show decision
+      steps.push({
+        step: steps.length,
+        description: `Group length: ${groupLength} (${isEvenLength ? 'EVEN' : 'ODD'}). ${isEvenLength ? 'Will reverse!' : 'Will skip.'}`,
+        nodes: [...nodes],
+        currentNode: null,
+        groupStart: currentPos,
+        groupEnd: groupEnd,
+        groupLength: groupLength,
+        isEvenLength: isEvenLength,
+        isReversing: false,
+        phase: 'deciding',
+        processedGroups: [...processedGroups]
+      });
+
+      if (isEvenLength) {
+        // Show reversal process
+        steps.push({
+          step: steps.length,
+          description: `Reversing even-length group [${nodes.slice(currentPos, groupEnd + 1).map(n => n.val).join(', ')}]`,
+          nodes: [...nodes],
+          currentNode: null,
+          groupStart: currentPos,
+          groupEnd: groupEnd,
+          groupLength: groupLength,
+          isEvenLength: true,
+          isReversing: true,
+          phase: 'reversing',
+          processedGroups: [...processedGroups]
+        });
+
+        // Actually reverse the group
+        const groupValues = [];
+        for (let i = groupEnd; i >= currentPos; i--) {
+          groupValues.push(nodes[i].val);
+        }
+        for (let i = 0; i < groupLength; i++) {
+          nodes[currentPos + i].val = groupValues[i];
+        }
+
+        processedGroups.push({ start: currentPos, end: groupEnd, length: groupLength, reversed: true });
+
+        steps.push({
+          step: steps.length,
+          description: `Group reversed! New values: [${nodes.slice(currentPos, groupEnd + 1).map(n => n.val).join(', ')}]`,
+          nodes: [...nodes],
+          currentNode: null,
+          groupStart: currentPos,
+          groupEnd: groupEnd,
+          groupLength: groupLength,
+          isEvenLength: true,
+          isReversing: false,
+          phase: 'reversing',
+          processedGroups: [...processedGroups]
+        });
+      } else {
+        // Skip odd-length group
+        steps.push({
+          step: steps.length,
+          description: `Skipping odd-length group [${nodes.slice(currentPos, groupEnd + 1).map(n => n.val).join(', ')}] - no reversal needed`,
+          nodes: [...nodes],
+          currentNode: null,
+          groupStart: currentPos,
+          groupEnd: groupEnd,
+          groupLength: groupLength,
+          isEvenLength: false,
+          isReversing: false,
+          phase: 'skipping',
+          processedGroups: [...processedGroups]
+        });
+
+        processedGroups.push({ start: currentPos, end: groupEnd, length: groupLength, reversed: false });
+      }
+
+      currentPos = groupEnd + 1;
+    }
+
+    // Final result
+    steps.push({
+      step: steps.length,
+      description: `Final result: ${nodes.map(n => n.val).join(' -> ')}. Only even-length groups were reversed!`,
+      nodes: [...nodes],
+      currentNode: null,
+      groupStart: null,
+      groupEnd: null,
+      groupLength: 0,
+      isEvenLength: false,
+      isReversing: false,
+      phase: 'complete',
+      processedGroups: [...processedGroups]
+    });
+
+    return steps;
+  };
+
+  const [steps] = useState(generateSteps());
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1800);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔄 Visualize Even-Length Group Reversal
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-purple-800 dark:text-purple-200">
+          Even-Length Group Reversal Visualization
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase.replace('_', ' ')}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Group Length:</span>
+            <span className="ml-2">{currentStepData.groupLength}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Even Length:</span>
+            <span className={`ml-2 ${currentStepData.isEvenLength ? 'text-green-600' : 'text-red-600'}`}>
+              {currentStepData.isEvenLength ? '✓ Yes' : '✗ No'}
+            </span>
+          </div>
+          <div>
+            <span className="font-semibold text-pink-600 dark:text-pink-400">Action:</span>
+            <span className={`ml-2 ${currentStepData.isEvenLength ? 'text-green-600' : 'text-gray-600'}`}>
+              {currentStepData.isReversing ? 'Reversing' : currentStepData.isEvenLength ? 'Reverse' : 'Skip'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked List Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border overflow-x-auto">
+        <div className="flex items-center space-x-2 min-w-max">
+          {currentStepData.nodes.map((node, index) => (
+            <React.Fragment key={index}>
+              <div
+                className={`
+                  flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                  ${index === currentStepData.currentNode 
+                    ? 'bg-yellow-400 border-yellow-600 text-yellow-900 scale-110 shadow-lg' 
+                    : currentStepData.groupStart !== null && index >= currentStepData.groupStart && index <= (currentStepData.groupEnd || currentStepData.groupStart)
+                    ? currentStepData.isReversing
+                      ? 'bg-red-400 border-red-600 text-red-900 animate-pulse'
+                      : currentStepData.isEvenLength
+                      ? 'bg-green-400 border-green-600 text-green-900'
+                      : 'bg-blue-400 border-blue-600 text-blue-900'
+                    : 'bg-gray-200 dark:bg-gray-600 border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-300'
+                  }
+                `}
+              >
+                {node.val}
+                {/* Group boundary indicators */}
+                {currentStepData.groupStart === index && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-purple-600 dark:text-purple-400">
+                    START
+                  </div>
+                )}
+                {currentStepData.groupEnd === index && (
+                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-purple-600 dark:text-purple-400">
+                    END
+                  </div>
+                )}
+              </div>
+              {index < currentStepData.nodes.length - 1 && (
+                <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>Group Detection:</strong> Find consecutive nodes with same value</div>
+          <div><strong>Length Check:</strong> Count nodes in each group</div>
+          <div><strong>Even-Only Reversal:</strong> Reverse only if group_length % 2 == 0</div>
+          <div><strong>Preserve Structure:</strong> Odd-length groups remain unchanged</div>
+        </div>
+      </div>
+
+      {/* Processed Groups Summary */}
+      {currentStepData.processedGroups.length > 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+          <h4 className="font-bold text-purple-800 dark:text-purple-200 mb-2">Processed Groups:</h4>
+          <div className="flex flex-wrap gap-2">
+            {currentStepData.processedGroups.map((group, index) => (
+              <div key={index} className={`px-3 py-1 rounded-full text-sm font-medium ${
+                group.reversed 
+                  ? 'bg-green-200 dark:bg-green-700 text-green-800 dark:text-green-200' 
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+              }`}>
+                Length {group.length}: {group.reversed ? 'Reversed' : 'Skipped'}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'scanning' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Find group of consecutive equal values
+          </div>
+          <div className={currentStepData.phase === 'counting' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. Count group length: {currentStepData.groupLength}
+          </div>
+          <div className={currentStepData.phase === 'deciding' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3. Check if length is even: {currentStepData.groupLength} % 2 == {currentStepData.groupLength % 2}
+          </div>
+          <div className={currentStepData.phase === 'reversing' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. If even: reverse the group
+          </div>
+          <div className={currentStepData.phase === 'skipping' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. If odd: skip (no reversal)
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-400 border border-yellow-600 rounded-full"></div>
+            <span>Current Node</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-400 border border-blue-600 rounded-full"></div>
+            <span>Current Group</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-400 border border-green-600 rounded-full"></div>
+            <span>Even Group (Reverse)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-400 border border-red-600 rounded-full"></div>
+            <span>Reversing</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ReverseKGroupsFromEndVisualizer Component
+interface FromEndStep {
+  step: number;
+  description: string;
+  nodes: ListNode[];
+  currentNode: number | null;
+  skipCount: number;
+  skippedNodes: number[];
+  groupStart: number | null;
+  groupEnd: number | null;
+  length: number;
+  k: number;
+  phase: 'calculating' | 'skipping' | 'reversing' | 'complete';
+  reversedGroups: number[][];
+}
+
+const ReverseKGroupsFromEndVisualizer: React.FC<{ k?: number }> = ({ k = 3 }) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+
+  // Create initial linked list: 1->2->3->4->5->6->7->8 (length 8, k=3, skip 2)
+  const createInitialList = (): ListNode[] => {
+    const nodes: ListNode[] = [];
+    for (let i = 1; i <= 8; i++) {
+      nodes.push({ val: i, next: null });
+    }
+    for (let i = 0; i < nodes.length - 1; i++) {
+      nodes[i].next = nodes[i + 1];
+    }
+    return nodes;
+  };
+
+  const [originalNodes] = useState(createInitialList());
+
+  // Generate visualization steps
+  const generateSteps = (): FromEndStep[] => {
+    const steps: FromEndStep[] = [];
+    const nodes = [...originalNodes];
+    const length = nodes.length;
+    const skipCount = length % k;
+    const reversedGroups: number[][] = [];
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial list: ${nodes.map(n => n.val).join(' -> ')} (length=${length}, k=${k}). We need to reverse k-groups from the END.`,
+      nodes: [...nodes],
+      currentNode: null,
+      skipCount: 0,
+      skippedNodes: [],
+      groupStart: null,
+      groupEnd: null,
+      length: 0,
+      k: k,
+      phase: 'calculating',
+      reversedGroups: []
+    });
+
+    // Step 1: Calculate length
+    for (let i = 0; i < length; i++) {
+      steps.push({
+        step: steps.length,
+        description: `Calculating length: counting node ${i + 1}/${length} (value: ${nodes[i].val})`,
+        nodes: [...nodes],
+        currentNode: i,
+        skipCount: 0,
+        skippedNodes: [],
+        groupStart: null,
+        groupEnd: null,
+        length: i + 1,
+        k: k,
+        phase: 'calculating',
+        reversedGroups: []
+      });
+    }
+
+    // Step 2: Calculate skip count
+    steps.push({
+      step: steps.length,
+      description: `Length = ${length}. Skip count = length % k = ${length} % ${k} = ${skipCount}. ${skipCount === 0 ? 'No nodes to skip!' : `Skip first ${skipCount} nodes.`}`,
+      nodes: [...nodes],
+      currentNode: null,
+      skipCount: skipCount,
+      skippedNodes: [],
+      groupStart: null,
+      groupEnd: null,
+      length: length,
+      k: k,
+      phase: 'calculating',
+      reversedGroups: []
+    });
+
+    if (skipCount === 0) {
+      // No skipping needed, just reverse normally
+      steps.push({
+        step: steps.length,
+        description: `No skipping needed. Apply standard k-group reversal from the beginning.`,
+        nodes: [...nodes],
+        currentNode: null,
+        skipCount: skipCount,
+        skippedNodes: [],
+        groupStart: null,
+        groupEnd: null,
+        length: length,
+        k: k,
+        phase: 'reversing',
+        reversedGroups: []
+      });
+    } else {
+      // Step 3: Skip nodes
+      const skippedNodes = [];
+      for (let i = 0; i < skipCount; i++) {
+        skippedNodes.push(i);
+        steps.push({
+          step: steps.length,
+          description: `Skipping node ${i + 1}/${skipCount}: ${nodes[i].val} (these nodes stay at the beginning)`,
+          nodes: [...nodes],
+          currentNode: i,
+          skipCount: skipCount,
+          skippedNodes: [...skippedNodes],
+          groupStart: null,
+          groupEnd: null,
+          length: length,
+          k: k,
+          phase: 'skipping',
+          reversedGroups: []
+        });
+      }
+
+      steps.push({
+        step: steps.length,
+        description: `Skipped ${skipCount} nodes: [${skippedNodes.map(i => nodes[i].val).join(', ')}]. Now reverse remaining ${length - skipCount} nodes in k-groups.`,
+        nodes: [...nodes],
+        currentNode: null,
+        skipCount: skipCount,
+        skippedNodes: [...skippedNodes],
+        groupStart: null,
+        groupEnd: null,
+        length: length,
+        k: k,
+        phase: 'reversing',
+        reversedGroups: []
+      });
+    }
+
+    // Step 4: Reverse k-groups in remaining nodes
+    let currentPos = skipCount;
+    while (currentPos + k <= length) {
+      const groupStart = currentPos;
+      const groupEnd = currentPos + k - 1;
+
+      // Show group identification
+      steps.push({
+        step: steps.length,
+        description: `Reversing k-group: positions ${groupStart} to ${groupEnd} [${nodes.slice(groupStart, groupEnd + 1).map(n => n.val).join(', ')}]`,
+        nodes: [...nodes],
+        currentNode: null,
+        skipCount: skipCount,
+        skippedNodes: Array.from({length: skipCount}, (_, i) => i),
+        groupStart: groupStart,
+        groupEnd: groupEnd,
+        length: length,
+        k: k,
+        phase: 'reversing',
+        reversedGroups: [...reversedGroups]
+      });
+
+      // Actually reverse the group
+      const groupValues = [];
+      for (let i = groupEnd; i >= groupStart; i--) {
+        groupValues.push(nodes[i].val);
+      }
+      for (let i = 0; i < k; i++) {
+        nodes[groupStart + i].val = groupValues[i];
+      }
+
+      reversedGroups.push([...groupValues]);
+
+      steps.push({
+        step: steps.length,
+        description: `Group reversed! New values: [${nodes.slice(groupStart, groupEnd + 1).map(n => n.val).join(', ')}]`,
+        nodes: [...nodes],
+        currentNode: null,
+        skipCount: skipCount,
+        skippedNodes: Array.from({length: skipCount}, (_, i) => i),
+        groupStart: groupStart,
+        groupEnd: groupEnd,
+        length: length,
+        k: k,
+        phase: 'reversing',
+        reversedGroups: [...reversedGroups]
+      });
+
+      currentPos += k;
+    }
+
+    // Final result
+    steps.push({
+      step: steps.length,
+      description: `Final result: ${nodes.map(n => n.val).join(' -> ')}. Successfully reversed k-groups from the end!`,
+      nodes: [...nodes],
+      currentNode: null,
+      skipCount: skipCount,
+      skippedNodes: Array.from({length: skipCount}, (_, i) => i),
+      groupStart: null,
+      groupEnd: null,
+      length: length,
+      k: k,
+      phase: 'complete',
+      reversedGroups: [...reversedGroups]
+    });
+
+    return steps;
+  };
+
+  const [steps] = useState(() => generateSteps());
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1800);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔄 Visualize Reverse K-Groups From End
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl border border-orange-200 dark:border-orange-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-orange-800 dark:text-orange-200">
+          Reverse K-Groups From End Visualization (k = {k})
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Length:</span>
+            <span className="ml-2">{currentStepData.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Skip Count:</span>
+            <span className="ml-2">{currentStepData.skipCount}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-red-600 dark:text-red-400">Groups:</span>
+            <span className="ml-2">{currentStepData.reversedGroups.length}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked List Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border overflow-x-auto">
+        <div className="flex items-center space-x-2 min-w-max">
+          {currentStepData.nodes.map((node, index) => (
+            <React.Fragment key={index}>
+              <div
+                className={`
+                  flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                  ${index === currentStepData.currentNode 
+                    ? 'bg-yellow-400 border-yellow-600 text-yellow-900 scale-110 shadow-lg' 
+                    : currentStepData.skippedNodes.includes(index)
+                    ? 'bg-gray-400 border-gray-600 text-gray-900'
+                    : currentStepData.groupStart !== null && index >= currentStepData.groupStart && index <= (currentStepData.groupEnd || currentStepData.groupStart)
+                    ? 'bg-green-400 border-green-600 text-green-900'
+                    : 'bg-blue-200 dark:bg-blue-600 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-200'
+                  }
+                `}
+              >
+                {node.val}
+                {/* Labels */}
+                {currentStepData.skippedNodes.includes(index) && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-gray-600 dark:text-gray-400">
+                    SKIP
+                  </div>
+                )}
+                {currentStepData.groupStart === index && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-green-600 dark:text-green-400">
+                    GROUP START
+                  </div>
+                )}
+                {currentStepData.groupEnd === index && (
+                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-green-600 dark:text-green-400">
+                    GROUP END
+                  </div>
+                )}
+              </div>
+              {index < currentStepData.nodes.length - 1 && (
+                <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>Calculate Skip Count:</strong> skip_count = length % k</div>
+          <div><strong>Skip Beginning:</strong> Leave first {currentStepData.skipCount} nodes unchanged</div>
+          <div><strong>Reverse Remaining:</strong> Apply k-group reversal to the rest</div>
+          <div><strong>Why?</strong> This ensures complete k-groups align from the END</div>
+          {currentStepData.skipCount > 0 && (
+            <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-800/50 rounded">
+              <strong>Example:</strong> Length {currentStepData.length}, k={k} → Skip {currentStepData.skipCount}, then reverse {currentStepData.length - currentStepData.skipCount} nodes
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Skip Logic Demonstration */}
+      {currentStepData.skipCount > 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Skip Logic Explanation:</h4>
+          <div className="text-gray-700 dark:text-gray-300 text-sm space-y-1">
+            <div>• Total length: {currentStepData.length} nodes</div>
+            <div>• Group size: {k} nodes per group</div>
+            <div>• Complete groups possible: {Math.floor(currentStepData.length / k)} groups</div>
+            <div>• Remaining nodes: {currentStepData.length} % {k} = {currentStepData.skipCount} nodes</div>
+            <div>• <strong>Strategy:</strong> Skip the {currentStepData.skipCount} remainder nodes at the START</div>
+            <div>• <strong>Result:</strong> Perfect k-groups align from the END</div>
+          </div>
+        </div>
+      )}
+
+      {/* Reversed Groups Summary */}
+      {currentStepData.reversedGroups.length > 0 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-700">
+          <h4 className="font-bold text-green-800 dark:text-green-200 mb-2">Reversed Groups:</h4>
+          <div className="flex flex-wrap gap-2">
+            {currentStepData.reversedGroups.map((group, index) => (
+              <div key={index} className="px-3 py-1 bg-green-200 dark:bg-green-700 rounded-full text-sm font-medium text-green-800 dark:text-green-200">
+                Group {index + 1}: [{group.join(', ')}]
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'calculating' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Calculate length: {currentStepData.length}
+          </div>
+          <div className={currentStepData.phase === 'calculating' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. Calculate skip_count: {currentStepData.length} % {k} = {currentStepData.skipCount}
+          </div>
+          <div className={currentStepData.phase === 'skipping' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3. Skip first {currentStepData.skipCount} nodes
+          </div>
+          <div className={currentStepData.phase === 'reversing' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. Apply k-group reversal to remaining nodes
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-400 border border-yellow-600 rounded-full"></div>
+            <span>Current Node</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-gray-400 border border-gray-600 rounded-full"></div>
+            <span>Skipped Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-400 border border-green-600 rounded-full"></div>
+            <span>Current Group</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-200 border border-blue-400 rounded-full"></div>
+            <span>Remaining Nodes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// DeepCopyWithCyclesVisualizer Component
+interface CycleStep {
+  step: number;
+  description: string;
+  originalNodes: { id: string; val: number; next?: string; random?: string }[];
+  clonedNodes: { id: string; val: number; next?: string; random?: string }[];
+  currentNode: string | null;
+  visitedMap: { [key: string]: string };
+  callStack: string[];
+  phase: 'starting' | 'visiting' | 'checking_visited' | 'creating_clone' | 'recursing' | 'returning' | 'complete';
+  cycleDetected: boolean;
+}
+
+const DeepCopyWithCyclesVisualizer: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+
+  // Create initial structure with cycles: A → B → C → A (cycle), B.random → C, C.random → A
+  const createInitialStructure = () => {
+    return [
+      { id: 'A', val: 1, next: 'B', random: 'C' },
+      { id: 'B', val: 2, next: 'C', random: 'A' },
+      { id: 'C', val: 3, next: 'A', random: 'B' } // Creates cycle: A → B → C → A
+    ];
+  };
+
+  const [originalNodes] = useState(createInitialStructure());
+
+  // Generate visualization steps
+  const generateSteps = (): CycleStep[] => {
+    const steps: CycleStep[] = [];
+    const visitedMap: { [key: string]: string } = {};
+    const clonedNodes: { id: string; val: number; next?: string; random?: string }[] = [];
+    const callStack: string[] = [];
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial structure with cycles: A(1) → B(2) → C(3) → A (cycle!). Random pointers: A→C, B→A, C→B. We need to deep copy without infinite recursion.`,
+      originalNodes: [...originalNodes],
+      clonedNodes: [],
+      currentNode: null,
+      visitedMap: {},
+      callStack: [],
+      phase: 'starting',
+      cycleDetected: false
+    });
+
+    // Simulate DFS traversal
+    const dfsSteps = (nodeId: string, depth: number = 0): void => {
+      if (depth > 10) return; // Prevent infinite recursion in visualization
+
+      const node = originalNodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      callStack.push(nodeId);
+
+      // Step: Visiting node
+      steps.push({
+        step: steps.length,
+        description: `DFS visiting node ${nodeId}(${node.val}). Call stack: [${callStack.join(' → ')}]`,
+        originalNodes: [...originalNodes],
+        clonedNodes: [...clonedNodes],
+        currentNode: nodeId,
+        visitedMap: { ...visitedMap },
+        callStack: [...callStack],
+        phase: 'visiting',
+        cycleDetected: false
+      });
+
+      // Step: Check if already visited
+      const alreadyVisited = nodeId in visitedMap;
+      steps.push({
+        step: steps.length,
+        description: `Checking visited map for ${nodeId}: ${alreadyVisited ? `Found! Return existing clone ${visitedMap[nodeId]}` : 'Not found, need to create clone'}`,
+        originalNodes: [...originalNodes],
+        clonedNodes: [...clonedNodes],
+        currentNode: nodeId,
+        visitedMap: { ...visitedMap },
+        callStack: [...callStack],
+        phase: 'checking_visited',
+        cycleDetected: alreadyVisited
+      });
+
+      if (alreadyVisited) {
+        // Cycle detected - return existing clone
+        steps.push({
+          step: steps.length,
+          description: `🔄 CYCLE DETECTED! Node ${nodeId} already visited. Returning existing clone ${visitedMap[nodeId]} to prevent infinite recursion.`,
+          originalNodes: [...originalNodes],
+          clonedNodes: [...clonedNodes],
+          currentNode: nodeId,
+          visitedMap: { ...visitedMap },
+          callStack: [...callStack],
+          phase: 'returning',
+          cycleDetected: true
+        });
+        callStack.pop();
+        return;
+      }
+
+      // Step: Create clone
+      const cloneId = `${nodeId}'`;
+      const clone = { id: cloneId, val: node.val };
+      clonedNodes.push(clone);
+      visitedMap[nodeId] = cloneId;
+
+      steps.push({
+        step: steps.length,
+        description: `Creating clone ${cloneId}(${node.val}) for original ${nodeId}. Adding to visited map: ${nodeId} → ${cloneId}`,
+        originalNodes: [...originalNodes],
+        clonedNodes: [...clonedNodes],
+        currentNode: nodeId,
+        visitedMap: { ...visitedMap },
+        callStack: [...callStack],
+        phase: 'creating_clone',
+        cycleDetected: false
+      });
+
+      // Step: Recursively process next pointer
+      if (node.next) {
+        steps.push({
+          step: steps.length,
+          description: `Recursively processing ${nodeId}.next → ${node.next}`,
+          originalNodes: [...originalNodes],
+          clonedNodes: [...clonedNodes],
+          currentNode: nodeId,
+          visitedMap: { ...visitedMap },
+          callStack: [...callStack],
+          phase: 'recursing',
+          cycleDetected: false
+        });
+
+        dfsSteps(node.next, depth + 1);
+
+        // Update clone's next pointer
+        const cloneNode = clonedNodes.find(c => c.id === cloneId);
+        if (cloneNode && node.next in visitedMap) {
+          cloneNode.next = visitedMap[node.next];
+          steps.push({
+            step: steps.length,
+            description: `Setting ${cloneId}.next = ${visitedMap[node.next]}`,
+            originalNodes: [...originalNodes],
+            clonedNodes: [...clonedNodes],
+            currentNode: nodeId,
+            visitedMap: { ...visitedMap },
+            callStack: [...callStack],
+            phase: 'recursing',
+            cycleDetected: false
+          });
+        }
+      }
+
+      // Step: Recursively process random pointer
+      if (node.random) {
+        steps.push({
+          step: steps.length,
+          description: `Recursively processing ${nodeId}.random → ${node.random}`,
+          originalNodes: [...originalNodes],
+          clonedNodes: [...clonedNodes],
+          currentNode: nodeId,
+          visitedMap: { ...visitedMap },
+          callStack: [...callStack],
+          phase: 'recursing',
+          cycleDetected: false
+        });
+
+        dfsSteps(node.random, depth + 1);
+
+        // Update clone's random pointer
+        const cloneNode = clonedNodes.find(c => c.id === cloneId);
+        if (cloneNode && node.random in visitedMap) {
+          cloneNode.random = visitedMap[node.random];
+          steps.push({
+            step: steps.length,
+            description: `Setting ${cloneId}.random = ${visitedMap[node.random]}`,
+            originalNodes: [...originalNodes],
+            clonedNodes: [...clonedNodes],
+            currentNode: nodeId,
+            visitedMap: { ...visitedMap },
+            callStack: [...callStack],
+            phase: 'recursing',
+            cycleDetected: false
+          });
+        }
+      }
+
+      // Step: Returning from DFS
+      callStack.pop();
+      steps.push({
+        step: steps.length,
+        description: `Returning clone ${cloneId} for node ${nodeId}. Call stack: [${callStack.join(' → ') || 'empty'}]`,
+        originalNodes: [...originalNodes],
+        clonedNodes: [...clonedNodes],
+        currentNode: nodeId,
+        visitedMap: { ...visitedMap },
+        callStack: [...callStack],
+        phase: 'returning',
+        cycleDetected: false
+      });
+    };
+
+    // Start DFS from node A
+    dfsSteps('A');
+
+    // Final result
+    steps.push({
+      step: steps.length,
+      description: `Deep copy complete! Successfully handled cycles using visited map. Original structure preserved, clone created without infinite recursion.`,
+      originalNodes: [...originalNodes],
+      clonedNodes: [...clonedNodes],
+      currentNode: null,
+      visitedMap: { ...visitedMap },
+      callStack: [],
+      phase: 'complete',
+      cycleDetected: false
+    });
+
+    return steps;
+  };
+
+  const [steps] = useState(() => generateSteps());
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔄 Visualize Deep Copy With Cycles
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-200 dark:border-indigo-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-indigo-800 dark:text-indigo-200">
+          Deep Copy With Cycles Visualization
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase.replace('_', ' ')}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Current Node:</span>
+            <span className="ml-2">{currentStepData.currentNode || 'None'}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-red-600 dark:text-red-400">Cycle Detected:</span>
+            <span className={`ml-2 ${currentStepData.cycleDetected ? 'text-red-600' : 'text-green-600'}`}>
+              {currentStepData.cycleDetected ? '⚠️ Yes' : '✓ No'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Structure Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Original Structure */}
+          <div>
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Original Structure (with cycles)</h4>
+            <div className="space-y-2">
+              {currentStepData.originalNodes.map((node) => (
+                <div
+                  key={node.id}
+                  className={`p-3 rounded-lg border-2 transition-all duration-300 ${
+                    node.id === currentStepData.currentNode
+                      ? 'bg-yellow-200 border-yellow-500 dark:bg-yellow-800/50 dark:border-yellow-400'
+                      : 'bg-blue-100 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600'
+                  }`}
+                >
+                  <div className="font-bold">{node.id}({node.val})</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    next: {node.next || 'null'} | random: {node.random || 'null'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Cloned Structure */}
+          <div>
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Cloned Structure</h4>
+            <div className="space-y-2">
+              {currentStepData.clonedNodes.length === 0 ? (
+                <div className="p-3 text-gray-500 italic">No clones created yet...</div>
+              ) : (
+                currentStepData.clonedNodes.map((node) => (
+                  <div
+                    key={node.id}
+                    className="p-3 rounded-lg border-2 bg-green-100 border-green-300 dark:bg-green-900/30 dark:border-green-600"
+                  >
+                    <div className="font-bold">{node.id}({node.val})</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      next: {node.next || 'null'} | random: {node.random || 'null'}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Visited Map */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-700">
+        <h4 className="font-bold text-green-800 dark:text-green-200 mb-2">Visited Map (Cycle Prevention)</h4>
+        {Object.keys(currentStepData.visitedMap).length === 0 ? (
+          <div className="text-green-700 dark:text-green-300 text-sm italic">Empty - no nodes visited yet</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {Object.entries(currentStepData.visitedMap).map(([original, clone]) => (
+              <div key={original} className="bg-green-200 dark:bg-green-700 px-3 py-1 rounded-full text-sm font-medium text-green-800 dark:text-green-200">
+                {original} → {clone}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Call Stack */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/30 dark:to-red-900/30 rounded-lg border border-orange-200 dark:border-orange-700">
+        <h4 className="font-bold text-orange-800 dark:text-orange-200 mb-2">DFS Call Stack</h4>
+        {currentStepData.callStack.length === 0 ? (
+          <div className="text-orange-700 dark:text-orange-300 text-sm italic">Empty</div>
+        ) : (
+          <div className="flex items-center space-x-2">
+            {currentStepData.callStack.map((node, index) => (
+              <React.Fragment key={index}>
+                <div className="bg-orange-200 dark:bg-orange-700 px-3 py-1 rounded-full text-sm font-medium text-orange-800 dark:text-orange-200">
+                  {node}
+                </div>
+                {index < currentStepData.callStack.length - 1 && (
+                  <div className="text-orange-600">→</div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>Cycle Detection:</strong> Check visited map BEFORE creating clone</div>
+          <div><strong>Prevention:</strong> Return existing clone if node already visited</div>
+          <div><strong>Early Storage:</strong> Store clone in visited map immediately after creation</div>
+          <div><strong>DFS Safety:</strong> Prevents infinite recursion in cyclic structures</div>
+        </div>
+      </div>
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'visiting' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Visit node via DFS
+          </div>
+          <div className={currentStepData.phase === 'checking_visited' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. Check if node in visited map
+          </div>
+          <div className={currentStepData.phase === 'checking_visited' && currentStepData.cycleDetected ? 'bg-red-200 dark:bg-red-800/50 px-2 py-1 rounded' : ''}>
+            3. If visited: return existing clone (CYCLE!)
+          </div>
+          <div className={currentStepData.phase === 'creating_clone' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. Create new clone and store in visited map
+          </div>
+          <div className={currentStepData.phase === 'recursing' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            5. Recursively process next and random pointers
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
+            <span>Current Node</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+            <span>Original Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+            <span>Cloned Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-200 border border-red-400 rounded"></div>
+            <span>Cycle Detected</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ElegantIntersectionVisualizer Component
+interface IntersectionStep {
+  step: number;
+  description: string;
+  listA: { id: string; val: number; isIntersection?: boolean }[];
+  listB: { id: string; val: number; isIntersection?: boolean }[];
+  pointerA: number | null;
+  pointerB: number | null;
+  pointerAList: 'A' | 'B';
+  pointerBList: 'A' | 'B';
+  phase: 'starting' | 'traversing' | 'switching' | 'meeting' | 'complete';
+  totalDistanceA: number;
+  totalDistanceB: number;
+  intersectionFound: boolean;
+}
+
+const ElegantIntersectionVisualizer: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+
+  // Create initial intersecting lists: A: 4→1→8→4→5, B: 5→6→1→8→4→5 (intersection at 8)
+  const createInitialLists = () => {
+    const listA = [
+      { id: 'A1', val: 4 },
+      { id: 'A2', val: 1 },
+      { id: 'I1', val: 8, isIntersection: true },
+      { id: 'I2', val: 4, isIntersection: true },
+      { id: 'I3', val: 5, isIntersection: true }
+    ];
+    
+    const listB = [
+      { id: 'B1', val: 5 },
+      { id: 'B2', val: 6 },
+      { id: 'B3', val: 1 },
+      { id: 'I1', val: 8, isIntersection: true },
+      { id: 'I2', val: 4, isIntersection: true },
+      { id: 'I3', val: 5, isIntersection: true }
+    ];
+    
+    return { listA, listB };
+  };
+
+  const [lists] = useState(createInitialLists());
+
+  // Generate visualization steps
+  const generateSteps = (): IntersectionStep[] => {
+    const steps: IntersectionStep[] = [];
+    const { listA, listB } = lists;
+    
+    let pA = 0, pB = 0;
+    let pointerAList: 'A' | 'B' = 'A';
+    let pointerBList: 'A' | 'B' = 'B';
+    let totalDistanceA = 0, totalDistanceB = 0;
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial setup: List A = [4,1,8,4,5], List B = [5,6,1,8,4,5]. Both pointers start at their respective heads. Intersection at node 8.`,
+      listA: [...listA],
+      listB: [...listB],
+      pointerA: 0,
+      pointerB: 0,
+      pointerAList: 'A',
+      pointerBList: 'B',
+      phase: 'starting',
+      totalDistanceA: 0,
+      totalDistanceB: 0,
+      intersectionFound: false
+    });
+
+    // Simulate the elegant algorithm
+    let stepCount = 1;
+    const maxSteps = 20; // Prevent infinite loop
+
+    while (stepCount < maxSteps) {
+      const currentListA = pointerAList === 'A' ? listA : listB;
+      const currentListB = pointerBList === 'A' ? listA : listB;
+      
+      // Check if pointers are at the same node (intersection found)
+      if (pointerAList === pointerBList && pA === pB && currentListA[pA]?.isIntersection) {
+        steps.push({
+          step: stepCount,
+          description: `🎯 INTERSECTION FOUND! Both pointers meet at node ${currentListA[pA].val}. Total distance: pA = ${totalDistanceA + 1}, pB = ${totalDistanceB + 1}`,
+          listA: [...listA],
+          listB: [...listB],
+          pointerA: pA,
+          pointerB: pB,
+          pointerAList,
+          pointerBList,
+          phase: 'meeting',
+          totalDistanceA: totalDistanceA + 1,
+          totalDistanceB: totalDistanceB + 1,
+          intersectionFound: true
+        });
+        break;
+      }
+
+      // Move pointers and handle switching
+      const nextPA = pA + 1;
+      const nextPB = pB + 1;
+      
+      let newPointerAList: 'A' | 'B' = pointerAList;
+      let newPointerBList: 'A' | 'B' = pointerBList;
+      let newPA = nextPA;
+      let newPB = nextPB;
+      
+      let description = `Step ${stepCount}: `;
+      let phase: IntersectionStep['phase'] = 'traversing';
+
+      // Handle pointer A
+      if (nextPA >= currentListA.length) {
+        // Pointer A reaches end, switch to other list
+        newPointerAList = pointerAList === 'A' ? 'B' : 'A';
+        newPA = 0;
+        description += `pA reaches end of List ${pointerAList}, switches to List ${newPointerAList}. `;
+        phase = 'switching';
+      } else {
+        description += `pA moves to ${currentListA[nextPA].val}. `;
+      }
+
+      // Handle pointer B
+      if (nextPB >= currentListB.length) {
+        // Pointer B reaches end, switch to other list
+        newPointerBList = pointerBList === 'A' ? 'B' : 'A';
+        newPB = 0;
+        description += `pB reaches end of List ${pointerBList}, switches to List ${newPointerBList}.`;
+        phase = 'switching';
+      } else {
+        description += `pB moves to ${currentListB[nextPB].val}.`;
+      }
+
+      totalDistanceA++;
+      totalDistanceB++;
+
+      steps.push({
+        step: stepCount,
+        description: description,
+        listA: [...listA],
+        listB: [...listB],
+        pointerA: newPA,
+        pointerB: newPB,
+        pointerAList: newPointerAList,
+        pointerBList: newPointerBList,
+        phase,
+        totalDistanceA,
+        totalDistanceB,
+        intersectionFound: false
+      });
+
+      pA = newPA;
+      pB = newPB;
+      pointerAList = newPointerAList;
+      pointerBList = newPointerBList;
+      stepCount++;
+    }
+
+    // Final result
+    steps.push({
+      step: stepCount,
+      description: `Algorithm complete! The elegant approach works because both pointers traverse the same total distance (A+B), ensuring they meet at the intersection point.`,
+      listA: [...listA],
+      listB: [...listB],
+      pointerA: pA,
+      pointerB: pB,
+      pointerAList,
+      pointerBList,
+      phase: 'complete',
+      totalDistanceA,
+      totalDistanceB,
+      intersectionFound: true
+    });
+
+    return steps;
+  };
+
+  const [steps] = useState(() => generateSteps());
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔗 Visualize Elegant Intersection Detection
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-xl border border-teal-200 dark:border-teal-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-teal-800 dark:text-teal-200">
+          Elegant Intersection Detection Visualization
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Distance A:</span>
+            <span className="ml-2">{currentStepData.totalDistanceA}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Distance B:</span>
+            <span className="ml-2">{currentStepData.totalDistanceB}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-red-600 dark:text-red-400">Intersection:</span>
+            <span className={`ml-2 ${currentStepData.intersectionFound ? 'text-green-600' : 'text-gray-600'}`}>
+              {currentStepData.intersectionFound ? '✓ Found' : '⏳ Searching'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked Lists Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        {/* List A */}
+        <div className="mb-4">
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">
+            List A (pA on List {currentStepData.pointerAList}):
+          </h4>
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            {currentStepData.listA.map((node, index) => (
+              <React.Fragment key={node.id}>
+                <div
+                  className={`
+                    flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                    ${currentStepData.pointerAList === 'A' && index === currentStepData.pointerA
+                      ? 'bg-red-400 border-red-600 text-red-900 scale-110 shadow-lg' 
+                      : node.isIntersection
+                      ? 'bg-yellow-200 border-yellow-500 text-yellow-800'
+                      : 'bg-blue-200 dark:bg-blue-600 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-200'
+                    }
+                  `}
+                >
+                  {node.val}
+                  {currentStepData.pointerAList === 'A' && index === currentStepData.pointerA && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-red-600 dark:text-red-400">
+                      pA
+                    </div>
+                  )}
+                  {node.isIntersection && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                      SHARED
+                    </div>
+                  )}
+                </div>
+                {index < currentStepData.listA.length - 1 && (
+                  <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* List B */}
+        <div>
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">
+            List B (pB on List {currentStepData.pointerBList}):
+          </h4>
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            {currentStepData.listB.map((node, index) => (
+              <React.Fragment key={node.id}>
+                <div
+                  className={`
+                    flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                    ${currentStepData.pointerBList === 'B' && index === currentStepData.pointerB
+                      ? 'bg-green-400 border-green-600 text-green-900 scale-110 shadow-lg' 
+                      : node.isIntersection
+                      ? 'bg-yellow-200 border-yellow-500 text-yellow-800'
+                      : 'bg-purple-200 dark:bg-purple-600 border-purple-400 dark:border-purple-500 text-purple-700 dark:text-purple-200'
+                    }
+                  `}
+                >
+                  {node.val}
+                  {currentStepData.pointerBList === 'B' && index === currentStepData.pointerB && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-green-600 dark:text-green-400">
+                      pB
+                    </div>
+                  )}
+                  {node.isIntersection && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                      SHARED
+                    </div>
+                  )}
+                </div>
+                {index < currentStepData.listB.length - 1 && (
+                  <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Pointer Status */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-700">
+        <h4 className="font-bold text-green-800 dark:text-green-200 mb-2">Pointer Status:</h4>
+        <div className="grid md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <div className="font-semibold text-red-600">Pointer A:</div>
+            <div>Currently on: List {currentStepData.pointerAList}</div>
+            <div>Position: {currentStepData.pointerA !== null ? currentStepData.pointerA : 'null'}</div>
+            <div>Total distance: {currentStepData.totalDistanceA}</div>
+          </div>
+          <div>
+            <div className="font-semibold text-green-600">Pointer B:</div>
+            <div>Currently on: List {currentStepData.pointerBList}</div>
+            <div>Position: {currentStepData.pointerB !== null ? currentStepData.pointerB : 'null'}</div>
+            <div>Total distance: {currentStepData.totalDistanceB}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>Elegant Solution:</strong> When pointer reaches end, switch to other list's head</div>
+          <div><strong>Distance Equality:</strong> Both pointers traverse total distance A+B</div>
+          <div><strong>Automatic Alignment:</strong> Switching handles different list lengths</div>
+          <div><strong>Meeting Point:</strong> Pointers meet at intersection (or null if no intersection)</div>
+          <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-800/50 rounded">
+            <strong>Why it works:</strong> If lists intersect, both pointers travel distance A+B and meet at intersection. If no intersection, both reach null simultaneously.
+          </div>
+        </div>
+      </div>
+
+      {/* Distance Analysis */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Distance Analysis:</h4>
+        <div className="text-gray-700 dark:text-gray-300 text-sm space-y-1">
+          <div>• List A length: 5 nodes (4→1→8→4→5)</div>
+          <div>• List B length: 6 nodes (5→6→1→8→4→5)</div>
+          <div>• Intersection starts at: node 8 (position 2 in A, position 3 in B)</div>
+          <div>• Both pointers will traverse: 5 + 6 = 11 total nodes</div>
+          <div>• Meeting point: After both travel same distance, they align at intersection</div>
+        </div>
+      </div>
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'starting' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Initialize: pA = headA, pB = headB
+          </div>
+          <div className={currentStepData.phase === 'traversing' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. While pA ≠ pB: move both pointers
+          </div>
+          <div className={currentStepData.phase === 'switching' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3. When pointer reaches end: switch to other list
+          </div>
+          <div className={currentStepData.phase === 'meeting' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. Pointers meet at intersection (or both null)
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-400 border border-red-600 rounded-full"></div>
+            <span>Pointer A</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-400 border border-green-600 rounded-full"></div>
+            <span>Pointer B</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
+            <span>Intersection Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-200 border border-blue-400 rounded"></div>
+            <span>List A Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-purple-200 border border-purple-400 rounded"></div>
+            <span>List B Nodes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Types and Interfaces
 interface MCQuestion {
   id: number;
@@ -330,7 +3234,17 @@ const LinkedListMultipleChoiceGame = () => {
       functionName: "copyRandomList",
       difficulty: "Medium",
       question: "What's the key insight for copying a list with random pointers?",
-      code: `def copyRandomList(head):
+      code: `Original list:
+Node A (val=7) → Node B (val=13) → Node C (val=11) → Node D (val=10) → Node E (val=1) → None
+
+Random pointers:
+A.random → C
+B.random → A  
+C.random → E
+D.random → C
+E.random → A
+
+def copyRandomList(head):
     if not head:
         return None
     
@@ -342,12 +3256,13 @@ const LinkedListMultipleChoiceGame = () => {
         new_node.next = curr.next
         curr.next = new_node
         curr = new_node.next
+    # State: A(7) → A'(7) → B(13) → B'(13) → C(11) → C'(11) → D(10) → D'(10) → E(1) → E'(1) → None
     
     # Pass 2: Set random pointers
     curr = head
     while curr:
         if curr.random:
-            curr.next.random = curr.random.next
+            curr.next.random = curr.random.next # A'.random = C.next = C'
         curr = curr.next.next
     
     # Pass 3: Separate lists
@@ -470,7 +3385,23 @@ const LinkedListMultipleChoiceGame = () => {
             merged_lists.append(mergeTwoLists(l1, l2))
         lists = merged_lists
     
-    return lists[0]`,
+    return lists[0]
+    def mergeTwoLists(l1, l2):
+        dummy = ListNode()
+        curr = dummy
+        
+        while l1 and l2:
+            if l1.val <= l2.val:
+                curr.next = l1
+                l1 = l1.next
+            else:
+                curr.next = l2
+                l2 = l2.next
+            curr = curr.next
+        
+        curr.next = l1 or l2
+        return dummy.next
+    `,
       options: [
         "Merge lists one by one sequentially",
         "Use a min-heap with k elements",
@@ -622,7 +3553,13 @@ const LinkedListMultipleChoiceGame = () => {
       functionName: "LFUCache",
       difficulty: "Hard",
       question: "What's the key challenge in implementing LFU (Least Frequently Used) cache?",
-      code: `class LFUCache:
+      code: `key_to_val: Enables O(1) value retrieval (core cache functionality)
+key_to_freq: Enables O(1) frequency lookup/update (LFU requirement)
+freq_to_keys: Enables O(1) LFU victim identification (eviction requirement)
+# For eviction: take first item (oldest/LRU)
+victim = next(iter(freq_to_keys[min_freq]))  # Returns 3
+
+class LFUCache:
     def __init__(self, capacity):
         self.capacity = capacity
         self.min_freq = 0
@@ -663,11 +3600,29 @@ const LinkedListMultipleChoiceGame = () => {
       functionName: "addTwoNumbers",
       difficulty: "Medium",
       question: "What's the key insight for adding two numbers stored in reverse order?",
-      code: `def addTwoNumbers(l1, l2):
+      code: `def addTwoNumbers(l1, l2)
+    """
+    Example: (7→2→4→3) + (5→6→4) = (7→8→0→7)
+             7243 + 564 = 7807
+    """
+    def reverse(head):
+        prev = None
+        curr = head
+        while curr:
+            next_temp = curr.next
+            curr.next = prev
+            prev = curr
+            curr = next_temp
+        return prev
+    
+    # Reverse both lists
+    l1 = reverse(l1)
+    l2 = reverse(l2)
+    
     dummy = ListNode(0)
     curr = dummy
     carry = 0
-    
+
     while l1 or l2 or carry:
         # MISSING LOGIC - how to handle different lengths?
         val1 = l1.val if l1 else 0
@@ -681,7 +3636,7 @@ const LinkedListMultipleChoiceGame = () => {
         l1 = l1.next if l1 else None
         l2 = l2.next if l2 else None
     
-    return dummy.next`,
+    return reverse(dummy.next)`,
       options: [
         "Pad shorter list with zeros",
         "Handle different lengths by using 0 for missing digits",
@@ -1469,8 +4424,10 @@ def mergeKLists(lists):
       difficulty: "Medium",
       question: "How do you merge two sorted arrays in-place?",
       code: `def merge(nums1, m, nums2, n):
-    # MISSING LOGIC - how to merge without extra space?
-    # Start from the end to avoid overwriting
+      
+# nums1 = [1, 5, 9, 0, 0, 0]  # m = 3
+# nums2 = [2, 6, 8]           # n = 3
+
     i, j, k = m - 1, n - 1, m + n - 1
     
     while i >= 0 and j >= 0:
@@ -1503,7 +4460,10 @@ def mergeKLists(lists):
       functionName: "mergeIntervals",
       difficulty: "Medium",
       question: "What's the key insight for merging overlapping intervals?",
-      code: `def merge(intervals):
+      code: `# Input:  [[1,3], [2,6], [8,10], [15,18]]
+# Output: [[1,6], [8,10], [15,18]]
+
+def merge(intervals):
     if not intervals:
         return []
     
@@ -1539,13 +4499,19 @@ def mergeKLists(lists):
       functionName: "LRUCacheOptimized",
       difficulty: "Hard",
       question: "How do you optimize LRU cache for better cache locality?",
-      code: `class LRUCache:
+      code: `# All data in contiguous arrays
+keys   = [k1, k2, k3, __, __]  # Index 0,1,2,3,4
+values = [v1, v2, v3, __, __]  # Same indices
+next   = [1,  2, -1, __, __]   # next[0]=1, next[1]=2, next[2]=-1
+prev   = [-1, 0,  1, __, __]   # prev[0]=-1, prev[1]=0, prev[2]=1
+
+# Linked list: slot0 ↔ slot1 ↔ slot2
+# head=0, tail=2
+
+class LRUCache:
     def __init__(self, capacity):
         self.capacity = capacity
         self.cache = {}
-        
-        # MISSING OPTIMIZATION - how to improve cache locality?
-        # Use array-based approach for better cache locality
         self.keys = [0] * capacity
         self.values = [0] * capacity
         self.next = [-1] * capacity
@@ -1555,26 +4521,74 @@ def mergeKLists(lists):
         self.size = 0
         self.free_slots = list(range(capacity))
     
+    def get(self, key):
+        if key not in self.cache:
+            return -1
+        
+        slot = self.cache[key]
+        value = self.values[slot]
+        
+        # Move to head (most recently used)
+        self._remove_slot(slot)
+        self._add_to_head(slot)
+        
+        return value
+    
+    def put(self, key, value):
+        if key in self.cache:
+            # Update existing
+            slot = self.cache[key]
+            self.values[slot] = value
+            self._remove_slot(slot)
+            self._add_to_head(slot)
+        else:
+            # Add new
+            if self.size >= self.capacity:
+                # Evict LRU (tail)
+                lru_slot = self.tail
+                lru_key = self.keys[lru_slot]
+                del self.cache[lru_key]
+                self._remove_slot(lru_slot)
+                self.free_slots.append(lru_slot)
+                self.size -= 1
+            
+            # Add new key
+            slot = self.free_slots.pop()
+            self.keys[slot] = key
+            self.values[slot] = value
+            self.cache[key] = slot
+            self._add_to_head(slot)
+            self.size += 1
+            
+    def _remove_slot(self, slot):
+        # Handle previous connection
+        if self.prev[slot] != -1:
+            # Connect previous node to next node (bypass current)
+            self.next[self.prev[slot]] = self.next[slot]
+        else:
+            # Current slot is head, update head pointer
+            self.head = self.next[slot]
+        
+        # Handle next connection  
+        if self.next[slot] != -1:
+            # Connect next node to previous node (bypass current)
+            self.prev[self.next[slot]] = self.prev[slot]
+        else:
+            # Current slot is tail, update tail pointer
+            self.tail = self.prev[slot]
+            
     def _add_to_head(self, slot):
         if self.head == -1:
+            # Empty list - slot becomes both head and tail
             self.head = self.tail = slot
             self.next[slot] = self.prev[slot] = -1
         else:
-            self.next[slot] = self.head
-            self.prev[self.head] = slot
-            self.prev[slot] = -1
-            self.head = slot
-    
-    def _remove_slot(self, slot):
-        if self.prev[slot] != -1:
-            self.next[self.prev[slot]] = self.next[slot]
-        else:
-            self.head = self.next[slot]
-        
-        if self.next[slot] != -1:
-            self.prev[self.next[slot]] = self.prev[slot]
-        else:
-            self.tail = self.prev[slot]`,
+            # Non-empty list - insert at head
+            self.next[slot] = self.head      # New slot points to old head
+            self.prev[self.head] = slot      # Old head points back to new slot
+            self.prev[slot] = -1             # New slot has no previous (it's head)
+            self.head = slot                 # Update head pointer   
+            `,
       options: [
         "Use hash map with linked list",
         "Use array-based implementation for cache locality",
@@ -1648,7 +4662,18 @@ def mergeKLists(lists):
       functionName: "multiplyStrings",
       difficulty: "Medium",
       question: "How do you multiply two numbers represented as linked lists?",
-      code: `def multiplyLists(l1, l2):
+      code: `# Initial: num = 243*564 = 137052, digits = []
+# Iteration 1: digits.append(137052 % 10) → digits = [2], num = 13705
+# ...
+# Iteration 6: digits.append(1 % 10)      → digits = [2, 5, 0, 7, 3, 1], num = 0
+# Final: digits = [2, 5, 0, 7, 3, 1] (least significant first)
+# Initial: head = Node(1), curr = Node(1)
+# i = 4: curr.next = Node(3), curr = Node(3)  → 1 → 3
+#...
+# i = 0: curr.next = Node(2), curr = Node(2)  → 1 → 3 → 7 → 0 → 5 → 2
+
+
+  def multiplyLists(l1, l2):
     # Convert lists to numbers
     def listToNumber(head):
         num = 0
@@ -1693,6 +4718,107 @@ def mergeKLists(lists):
     },
     {
       id: 37,
+      topic: "Arithmetic Operations",
+      functionName: "multiplyListsGradeSchool",
+      difficulty: "Hard",
+      question: "What's the alternative grade-school approach for multiplying linked lists without integer conversion?",
+      code: `# Grade-School Multiplication: 243 × 564
+# Visual representation:
+#     2 4 3
+#   × 5 6 4
+#   -------
+#     9 7 2  (243 × 4)
+#   1 4 5 8  (243 × 6, shifted left 1)
+# 1 2 1 5 0  (243 × 5, shifted left 2)
+# ---------
+# 1 3 7 0 5 2
+
+def multiplyListsGradeSchool(l1, l2):
+    # Extract digits to arrays
+    arr1, arr2 = [], []
+    while l1:
+        arr1.append(l1.val)
+        l1 = l1.next
+    while l2:
+        arr2.append(l2.val)
+        l2 = l2.next
+    
+    # Initialize result array
+    result = [0] * (len(arr1) + len(arr2))
+    
+    # MISSING LOGIC - how to implement grade-school multiplication?
+    # Multiply each digit of arr1 with each digit of arr2
+    for i in range(len(arr1) - 1, -1, -1):
+        for j in range(len(arr2) - 1, -1, -1):
+            product = arr1[i] * arr2[j]
+            pos1, pos2 = i + j, i + j + 1
+            
+            total = product + result[pos2]
+            result[pos2] = total % 10
+            result[pos1] += total // 10
+    
+    # Skip leading zeros
+    start = 0
+    while start < len(result) and result[start] == 0:
+        start += 1
+    
+    if start == len(result):
+        return ListNode(0)
+    
+    # Convert back to linked list
+    head = ListNode(result[start])
+    curr = head
+    for i in range(start + 1, len(result)):
+        curr.next = ListNode(result[i])
+        curr = curr.next
+    
+    return head`,
+      options: [
+        "Use nested loops to multiply each digit pair and handle carries",
+        "Convert to strings and use string multiplication",
+        "Use recursion to break down the problem",
+        "Apply Karatsuba algorithm for optimization"
+      ],
+      correctAnswer: 0,
+      explanation: "The grade-school approach uses nested loops to multiply each digit of the first number with each digit of the second number, properly positioning results and handling carries. This avoids integer overflow issues and can handle arbitrarily large numbers.",
+      followUpQuestions: [
+        {
+          question: "What's the main advantage of grade-school multiplication over direct integer conversion?",
+          options: [
+            "It's faster for small numbers",
+            "It handles arbitrarily large numbers without overflow",
+            "It uses less memory",
+            "It's easier to implement"
+          ],
+          correctAnswer: 1,
+          explanation: "Grade-school multiplication can handle arbitrarily large numbers without integer overflow, making it more robust for very large inputs where direct integer conversion might fail."
+        },
+        {
+          question: "What's the time complexity of the grade-school multiplication approach?",
+          options: [
+            "O(N + M)",
+            "O(N × M)",
+            "O(N² + M²)",
+            "O(log(N × M))"
+          ],
+          correctAnswer: 1,
+          explanation: "The nested loops iterate through all digit pairs, giving O(N × M) time complexity where N and M are the lengths of the input lists."
+        },
+        {
+          question: "Why do we use positions i+j and i+j+1 for storing the multiplication result?",
+          options: [
+            "To avoid array bounds errors",
+            "To handle the decimal place positioning correctly",
+            "To optimize memory usage",
+            "To simplify the carry calculation"
+          ],
+          correctAnswer: 1,
+          explanation: "Positions i+j and i+j+1 correctly represent where the tens and units digits of the product should be placed in the final result, mimicking how we position partial products in manual multiplication."
+        }
+      ]
+    },
+    {
+      id: 38,
       topic: "Arithmetic Operations",
       functionName: "subtractLists",
       difficulty: "Medium",
@@ -1755,7 +4881,7 @@ def mergeKLists(lists):
 
     // Continue with more Node Removal questions (8 more to reach 11)
     {
-      id: 38,
+      id: 39,
       topic: "Node Removal",
       functionName: "removeElements",
       difficulty: "Easy",
@@ -1786,7 +4912,7 @@ def mergeKLists(lists):
       followUpQuestions: []
     },
     {
-      id: 39,
+      id: 40,
       topic: "Node Removal",
       functionName: "deleteDuplicatesII",
       difficulty: "Medium",
@@ -1820,7 +4946,7 @@ def mergeKLists(lists):
 
     // Continue with more Intersection Detection questions (8 more to reach 11)
     {
-      id: 40,
+      id: 41,
       topic: "Intersection Detection",
       functionName: "findCycleLength",
       difficulty: "Medium",
@@ -1859,7 +4985,7 @@ def mergeKLists(lists):
       followUpQuestions: []
     },
     {
-      id: 41,
+      id: 42,
       topic: "Intersection Detection",
       functionName: "findIntersectionWithCycles",
       difficulty: "Hard",
@@ -2099,7 +5225,7 @@ def mergeKLists(lists):
     // Add small delay before moving to next question
     setTimeout(() => {
       nextQuestion();
-    }, 2000);
+    }, 10000);
   };
 
   // Reset game
@@ -2325,6 +5451,43 @@ def mergeKLists(lists):
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                 {currentQuestion.question}
               </h2>
+
+              {/* Visualization Buttons */}
+              {currentQuestion.id === 1 && (
+                <div className="mb-6">
+                  <ReverseKGroupVisualizer k={3} />
+                </div>
+              )}
+              
+              {currentQuestion.id === 22 && (
+                <div className="mb-6">
+                  <RotateRightVisualizer initialK={2} />
+                </div>
+              )}
+              
+              {currentQuestion.id === 24 && (
+                <div className="mb-6">
+                  <ReverseEvenLengthVisualizer />
+                </div>
+              )}
+              
+              {currentQuestion.id === 26 && (
+                <div className="mb-6">
+                  <ReverseKGroupsFromEndVisualizer k={3} />
+                </div>
+              )}
+              
+              {currentQuestion.id === 29 && (
+                <div className="mb-6">
+                  <DeepCopyWithCyclesVisualizer />
+                </div>
+              )}
+              
+              {currentQuestion.id === 19 && (
+                <div className="mb-6">
+                  <ElegantIntersectionVisualizer />
+                </div>
+              )}
 
               {/* Answer Options */}
               <div className="space-y-3 mb-6">
