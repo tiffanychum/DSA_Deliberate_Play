@@ -2809,37 +2809,6 @@ const ElegantIntersectionVisualizer: React.FC = () => {
         </div>
       </div>
 
-      {/* Distance Analysis */}
-      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Distance Analysis:</h4>
-        <div className="text-gray-700 dark:text-gray-300 text-sm space-y-1">
-          <div>• List A length: 5 nodes (4→1→8→4→5)</div>
-          <div>• List B length: 6 nodes (5→6→1→8→4→5)</div>
-          <div>• Intersection starts at: node 8 (position 2 in A, position 3 in B)</div>
-          <div>• Both pointers will traverse: 5 + 6 = 11 total nodes</div>
-          <div>• Meeting point: After both travel same distance, they align at intersection</div>
-        </div>
-      </div>
-
-      {/* Algorithm Code with Highlighting */}
-      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
-        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
-          <div className={currentStepData.phase === 'starting' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
-            1. Initialize: pA = headA, pB = headB
-          </div>
-          <div className={currentStepData.phase === 'traversing' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
-            2. While pA ≠ pB: move both pointers
-          </div>
-          <div className={currentStepData.phase === 'switching' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
-            3. When pointer reaches end: switch to other list
-          </div>
-          <div className={currentStepData.phase === 'meeting' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
-            4. Pointers meet at intersection (or both null)
-          </div>
-        </div>
-      </div>
-
       {/* Controls */}
       <div className="flex flex-wrap gap-3 justify-center">
         <button
@@ -2892,6 +2861,1110 @@ const ElegantIntersectionVisualizer: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
             <span>Intersection Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-200 border border-blue-400 rounded"></div>
+            <span>List A Nodes</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-purple-200 border border-purple-400 rounded"></div>
+            <span>List B Nodes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// CycleStartDetectionVisualizer Component
+interface CycleStartStep {
+  step: number;
+  description: string;
+  nodes: { id: string; val: number; isCycleStart?: boolean; isMeetingPoint?: boolean }[];
+  slowPointer: number | null;
+  fastPointer: number | null;
+  phase: 'phase1_detection' | 'phase1_found' | 'phase2_reset' | 'phase2_finding' | 'phase2_found' | 'complete';
+  cycleDetected: boolean;
+  cycleStart: number | null;
+  meetingPoint: number | null;
+  slowSteps: number;
+  fastSteps: number;
+}
+
+const CycleStartDetectionVisualizer: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+
+  // Create initial cyclic list: 3→2→0→4→2 (cycle starts at node 2, index 1)
+  const createInitialList = () => {
+    return [
+      { id: 'N0', val: 3 },
+      { id: 'N1', val: 2, isCycleStart: true },
+      { id: 'N2', val: 0 },
+      { id: 'N3', val: 4 },
+      { id: 'N4', val: 2 } // Points back to N1, creating cycle
+    ];
+  };
+
+  const [nodes] = useState(createInitialList());
+
+  // Generate visualization steps
+  const generateSteps = (): CycleStartStep[] => {
+    const steps: CycleStartStep[] = [];
+    let slow = 0, fast = 0;
+    let slowSteps = 0, fastSteps = 0;
+    let meetingPoint: number | null = null;
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Initial setup: List = [3,2,0,4,2] with cycle 2→0→4→2. Both slow and fast pointers start at head. Goal: Find cycle start using Floyd's algorithm.`,
+      nodes: [...nodes],
+      slowPointer: 0,
+      fastPointer: 0,
+      phase: 'phase1_detection',
+      cycleDetected: false,
+      cycleStart: null,
+      meetingPoint: null,
+      slowSteps: 0,
+      fastSteps: 0
+    });
+
+    // Phase 1: Detect cycle using slow/fast pointers
+    let stepCount = 1;
+    while (stepCount < 20) { // Prevent infinite loop
+      // Move slow pointer one step
+      slow = (slow + 1) % nodes.length;
+      slowSteps++;
+      
+      // Move fast pointer two steps
+      fast = (fast + 1) % nodes.length;
+      fast = (fast + 1) % nodes.length;
+      fastSteps += 2;
+
+      steps.push({
+        step: stepCount,
+        description: `Phase 1 - Step ${stepCount}: Slow moves to ${nodes[slow].val} (index ${slow}), Fast moves to ${nodes[fast].val} (index ${fast}). Slow steps: ${slowSteps}, Fast steps: ${fastSteps}`,
+        nodes: [...nodes],
+        slowPointer: slow,
+        fastPointer: fast,
+        phase: 'phase1_detection',
+        cycleDetected: false,
+        cycleStart: null,
+        meetingPoint: null,
+        slowSteps,
+        fastSteps
+      });
+
+      // Check if they meet (cycle detected)
+      if (slow === fast) {
+        meetingPoint = slow;
+        steps.push({
+          step: stepCount + 1,
+          description: `🎯 CYCLE DETECTED! Slow and fast pointers meet at node ${nodes[slow].val} (index ${slow}). Meeting point found in Phase 1.`,
+          nodes: nodes.map((node, index) => ({
+            ...node,
+            isMeetingPoint: index === slow
+          })),
+          slowPointer: slow,
+          fastPointer: fast,
+          phase: 'phase1_found',
+          cycleDetected: true,
+          cycleStart: null,
+          meetingPoint: slow,
+          slowSteps,
+          fastSteps
+        });
+        break;
+      }
+      stepCount++;
+    }
+
+    // Phase 2: Find cycle start
+    stepCount += 2;
+    
+    // Reset slow pointer to head
+    slow = 0;
+    steps.push({
+      step: stepCount,
+      description: `Phase 2 - Reset: Move slow pointer back to head (index 0). Fast pointer stays at meeting point (index ${fast}). Now move both at same speed.`,
+      nodes: nodes.map((node, index) => ({
+        ...node,
+        isMeetingPoint: index === meetingPoint
+      })),
+      slowPointer: 0,
+      fastPointer: fast,
+      phase: 'phase2_reset',
+      cycleDetected: true,
+      cycleStart: null,
+      meetingPoint,
+      slowSteps,
+      fastSteps
+    });
+
+    // Move both pointers at same speed until they meet
+    stepCount++;
+    while (slow !== fast && stepCount < 30) {
+      slow = (slow + 1) % nodes.length;
+      fast = (fast + 1) % nodes.length;
+      slowSteps++;
+      fastSteps++;
+
+      steps.push({
+        step: stepCount,
+        description: `Phase 2 - Step ${stepCount - (steps.length - 1)}: Both move one step. Slow at ${nodes[slow].val} (index ${slow}), Fast at ${nodes[fast].val} (index ${fast}).`,
+        nodes: nodes.map((node, index) => ({
+          ...node,
+          isMeetingPoint: index === meetingPoint
+        })),
+        slowPointer: slow,
+        fastPointer: fast,
+        phase: 'phase2_finding',
+        cycleDetected: true,
+        cycleStart: null,
+        meetingPoint,
+        slowSteps,
+        fastSteps
+      });
+
+      if (slow === fast) {
+        steps.push({
+          step: stepCount + 1,
+          description: `🎯 CYCLE START FOUND! Both pointers meet at node ${nodes[slow].val} (index ${slow}). This is the start of the cycle!`,
+          nodes: nodes.map((node, index) => ({
+            ...node,
+            isMeetingPoint: index === meetingPoint,
+            isCycleStart: index === slow
+          })),
+          slowPointer: slow,
+          fastPointer: fast,
+          phase: 'phase2_found',
+          cycleDetected: true,
+          cycleStart: slow,
+          meetingPoint,
+          slowSteps,
+          fastSteps
+        });
+        break;
+      }
+      stepCount++;
+    }
+
+    // Final result
+    steps.push({
+      step: stepCount + 2,
+      description: `Algorithm complete! Floyd's Cycle Detection successfully found the cycle start at node ${nodes[slow].val} (index ${slow}). The mathematical property ensures this works every time.`,
+      nodes: nodes.map((node, index) => ({
+        ...node,
+        isMeetingPoint: index === meetingPoint,
+        isCycleStart: index === slow
+      })),
+      slowPointer: slow,
+      fastPointer: fast,
+      phase: 'complete',
+      cycleDetected: true,
+      cycleStart: slow,
+      meetingPoint,
+      slowSteps,
+      fastSteps
+    });
+
+    return steps;
+  };
+
+  const [steps] = useState(() => generateSteps());
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔍 Visualize Cycle Start Detection
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-200 dark:border-emerald-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-200">
+          Floyd's Cycle Start Detection Visualization
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase.replace('_', ' ')}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Cycle:</span>
+            <span className={`ml-2 ${currentStepData.cycleDetected ? 'text-green-600' : 'text-gray-600'}`}>
+              {currentStepData.cycleDetected ? '✓ Detected' : '⏳ Searching'}
+            </span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Slow Steps:</span>
+            <span className="ml-2">{currentStepData.slowSteps}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-red-600 dark:text-red-400">Fast Steps:</span>
+            <span className="ml-2">{currentStepData.fastSteps}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked List Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border overflow-x-auto">
+        <div className="flex items-center space-x-2 min-w-max">
+          {currentStepData.nodes.map((node, index) => (
+            <React.Fragment key={node.id}>
+              <div
+                className={`
+                  flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                  ${index === currentStepData.slowPointer && index === currentStepData.fastPointer
+                    ? 'bg-purple-400 border-purple-600 text-purple-900 scale-110 shadow-lg' 
+                    : index === currentStepData.slowPointer
+                    ? 'bg-blue-400 border-blue-600 text-blue-900 scale-110 shadow-lg'
+                    : index === currentStepData.fastPointer
+                    ? 'bg-red-400 border-red-600 text-red-900 scale-110 shadow-lg'
+                    : node.isCycleStart
+                    ? 'bg-green-300 border-green-600 text-green-900'
+                    : node.isMeetingPoint
+                    ? 'bg-yellow-300 border-yellow-600 text-yellow-900'
+                    : 'bg-gray-200 dark:bg-gray-600 border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-300'
+                  }
+                `}
+              >
+                {node.val}
+                {/* Pointer labels */}
+                {index === currentStepData.slowPointer && index === currentStepData.fastPointer && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-purple-600 dark:text-purple-400">
+                    BOTH
+                  </div>
+                )}
+                {index === currentStepData.slowPointer && index !== currentStepData.fastPointer && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-blue-600 dark:text-blue-400">
+                    SLOW
+                  </div>
+                )}
+                {index === currentStepData.fastPointer && index !== currentStepData.slowPointer && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-red-600 dark:text-red-400">
+                    FAST
+                  </div>
+                )}
+                {/* Special node labels */}
+                {node.isCycleStart && (
+                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-green-600 dark:text-green-400">
+                    START
+                  </div>
+                )}
+                {node.isMeetingPoint && !node.isCycleStart && (
+                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                    MEET
+                  </div>
+                )}
+              </div>
+              {index < currentStepData.nodes.length - 1 && (
+                <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+              )}
+              {/* Show cycle arrow */}
+              {index === currentStepData.nodes.length - 1 && (
+                <div className="flex items-center">
+                  <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 ml-2">back to index 1</div>
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Phase Information */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-700">
+        <h4 className="font-bold text-green-800 dark:text-green-200 mb-2">Current Phase:</h4>
+        <div className="text-green-700 dark:text-green-300 text-sm">
+          {currentStepData.phase.startsWith('phase1') && (
+            <div>
+              <strong>Phase 1 - Cycle Detection:</strong> Use slow (1 step) and fast (2 steps) pointers to detect if a cycle exists. When they meet, cycle is confirmed.
+            </div>
+          )}
+          {currentStepData.phase.startsWith('phase2') && (
+            <div>
+              <strong>Phase 2 - Find Cycle Start:</strong> Reset slow pointer to head, keep fast at meeting point. Move both at same speed (1 step each) until they meet at cycle start.
+            </div>
+          )}
+          {currentStepData.phase === 'complete' && (
+            <div>
+              <strong>Complete:</strong> Successfully found the cycle start using Floyd's two-phase algorithm!
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>Phase 1:</strong> Detect cycle using slow/fast pointers (tortoise and hare)</div>
+          <div><strong>Phase 2:</strong> Reset slow to head, move both at same speed</div>
+          <div><strong>Mathematical Property:</strong> Distance from head to cycle start = Distance from meeting point to cycle start</div>
+          <div><strong>Why it works:</strong> When fast catches slow, they're exactly the right distance apart for the reset trick to work</div>
+          <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-800/50 rounded">
+            <strong>Formula:</strong> If cycle length is C and meeting happens after M steps, then head-to-start distance equals meeting-to-start distance.
+          </div>
+        </div>
+      </div>
+
+      {/* Mathematical Explanation */}
+      {currentStepData.phase === 'phase2_reset' || currentStepData.phase === 'phase2_finding' || currentStepData.phase === 'phase2_found' || currentStepData.phase === 'complete' ? (
+        <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Mathematical Proof:</h4>
+          <div className="text-gray-700 dark:text-gray-300 text-sm space-y-1">
+            <div>• Let L = distance from head to cycle start</div>
+            <div>• Let C = cycle length</div>
+            <div>• Let M = distance from cycle start to meeting point</div>
+            <div>• When they meet: slow traveled L + M, fast traveled L + M + nC (n full cycles)</div>
+            <div>• Since fast = 2 × slow: L + M + nC = 2(L + M)</div>
+            <div>• Solving: nC = L + M, so L = nC - M</div>
+            <div>• <strong>Key insight:</strong> Distance from head to start (L) = Distance from meeting to start (C - M)</div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'phase1_detection' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Phase 1: slow = fast = head
+          </div>
+          <div className={currentStepData.phase === 'phase1_detection' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. Move slow 1 step, fast 2 steps until they meet
+          </div>
+          <div className={currentStepData.phase === 'phase1_found' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3. If they meet, cycle exists
+          </div>
+          <div className={currentStepData.phase === 'phase2_reset' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. Phase 2: Reset slow to head
+          </div>
+          <div className={currentStepData.phase === 'phase2_finding' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            5. Move both 1 step until they meet
+          </div>
+          <div className={currentStepData.phase === 'phase2_found' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            6. Meeting point is cycle start
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-400 border border-blue-600 rounded-full"></div>
+            <span>Slow Pointer</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-400 border border-red-600 rounded-full"></div>
+            <span>Fast Pointer</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-purple-400 border border-purple-600 rounded-full"></div>
+            <span>Both Pointers</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-300 border border-green-600 rounded"></div>
+            <span>Cycle Start</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-300 border border-yellow-600 rounded"></div>
+            <span>Meeting Point</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// CyclicIntersectionVisualizer Component
+interface CyclicIntersectionStep {
+  step: number;
+  description: string;
+  listA: { id: string; val: number; isCycleStart?: boolean; isIntersection?: boolean }[];
+  listB: { id: string; val: number; isCycleStart?: boolean; isIntersection?: boolean }[];
+  cycleA: number | null;
+  cycleB: number | null;
+  phase: 'detecting_cycles' | 'analyzing_cases' | 'checking_same_cycle' | 'standard_intersection' | 'complete';
+  caseType: 'both_acyclic' | 'same_cycle' | 'different_cycles' | 'mixed' | 'unknown';
+  currentScenario: number;
+  result: string;
+}
+
+const CyclicIntersectionVisualizer: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showVisualizer, setShowVisualizer] = useState(false);
+  const [currentScenario, setCurrentScenario] = useState(0);
+
+  // Create different scenarios
+  const createScenarios = () => {
+    return [
+      // Scenario 1: Both acyclic with intersection
+      {
+        name: "Both Acyclic with Intersection",
+        listA: [
+          { id: 'A1', val: 4 },
+          { id: 'A2', val: 1 },
+          { id: 'I1', val: 8, isIntersection: true },
+          { id: 'I2', val: 4, isIntersection: true },
+          { id: 'I3', val: 5, isIntersection: true }
+        ],
+        listB: [
+          { id: 'B1', val: 5 },
+          { id: 'B2', val: 6 },
+          { id: 'B3', val: 1 },
+          { id: 'I1', val: 8, isIntersection: true },
+          { id: 'I2', val: 4, isIntersection: true },
+          { id: 'I3', val: 5, isIntersection: true }
+        ],
+        cycleA: null,
+        cycleB: null,
+        caseType: 'both_acyclic' as const,
+        result: "Intersection at node 8"
+      },
+      // Scenario 2: Both cyclic with same cycle
+      {
+        name: "Both Cyclic with Same Cycle",
+        listA: [
+          { id: 'A1', val: 3 },
+          { id: 'C1', val: 2, isCycleStart: true },
+          { id: 'C2', val: 0 },
+          { id: 'C3', val: 4 } // Points back to C1
+        ],
+        listB: [
+          { id: 'B1', val: 7 },
+          { id: 'B2', val: 9 },
+          { id: 'C1', val: 2, isCycleStart: true },
+          { id: 'C2', val: 0 },
+          { id: 'C3', val: 4 } // Points back to C1
+        ],
+        cycleA: 1, // Index of cycle start in listA
+        cycleB: 2, // Index of cycle start in listB
+        caseType: 'same_cycle' as const,
+        result: "Same cycle - intersection at cycle start"
+      },
+      // Scenario 3: Both cyclic with different cycles
+      {
+        name: "Both Cyclic with Different Cycles",
+        listA: [
+          { id: 'A1', val: 1 },
+          { id: 'CA1', val: 2, isCycleStart: true },
+          { id: 'CA2', val: 3 } // Points back to CA1
+        ],
+        listB: [
+          { id: 'B1', val: 4 },
+          { id: 'CB1', val: 5, isCycleStart: true },
+          { id: 'CB2', val: 6 } // Points back to CB1
+        ],
+        cycleA: 1,
+        cycleB: 1,
+        caseType: 'different_cycles' as const,
+        result: "Different cycles - no intersection"
+      },
+      // Scenario 4: Mixed (one cyclic, one acyclic)
+      {
+        name: "Mixed: One Cyclic, One Acyclic",
+        listA: [
+          { id: 'A1', val: 1 },
+          { id: 'A2', val: 2 },
+          { id: 'A3', val: 3 }
+        ],
+        listB: [
+          { id: 'B1', val: 4 },
+          { id: 'BC1', val: 5, isCycleStart: true },
+          { id: 'BC2', val: 6 } // Points back to BC1
+        ],
+        cycleA: null,
+        cycleB: 1,
+        caseType: 'mixed' as const,
+        result: "Mixed types - no intersection possible"
+      }
+    ];
+  };
+
+  const [scenarios] = useState(createScenarios());
+
+  // Generate visualization steps for current scenario
+  const generateSteps = (): CyclicIntersectionStep[] => {
+    const steps: CyclicIntersectionStep[] = [];
+    const scenario = scenarios[currentScenario];
+
+    // Initial state
+    steps.push({
+      step: 0,
+      description: `Scenario: ${scenario.name}. First, detect cycles in both lists using Floyd's algorithm.`,
+      listA: [...scenario.listA],
+      listB: [...scenario.listB],
+      cycleA: null,
+      cycleB: null,
+      phase: 'detecting_cycles',
+      caseType: 'unknown',
+      currentScenario,
+      result: ""
+    });
+
+    // Cycle detection phase
+    steps.push({
+      step: 1,
+      description: `Cycle detection complete. List A: ${scenario.cycleA !== null ? `Cycle detected at index ${scenario.cycleA}` : 'No cycle'}. List B: ${scenario.cycleB !== null ? `Cycle detected at index ${scenario.cycleB}` : 'No cycle'}.`,
+      listA: [...scenario.listA],
+      listB: [...scenario.listB],
+      cycleA: scenario.cycleA,
+      cycleB: scenario.cycleB,
+      phase: 'analyzing_cases',
+      caseType: 'unknown',
+      currentScenario,
+      result: ""
+    });
+
+    // Case analysis
+    steps.push({
+      step: 2,
+      description: `Analyzing case type: ${scenario.caseType.replace('_', ' ')}. This determines our intersection strategy.`,
+      listA: [...scenario.listA],
+      listB: [...scenario.listB],
+      cycleA: scenario.cycleA,
+      cycleB: scenario.cycleB,
+      phase: 'analyzing_cases',
+      caseType: scenario.caseType,
+      currentScenario,
+      result: ""
+    });
+
+    // Handle specific cases
+    if (scenario.caseType === 'both_acyclic') {
+      steps.push({
+        step: 3,
+        description: `Both lists are acyclic. Using standard intersection algorithm (pointer switching method).`,
+        listA: [...scenario.listA],
+        listB: [...scenario.listB],
+        cycleA: scenario.cycleA,
+        cycleB: scenario.cycleB,
+        phase: 'standard_intersection',
+        caseType: scenario.caseType,
+        currentScenario,
+        result: ""
+      });
+    } else if (scenario.caseType === 'same_cycle') {
+      steps.push({
+        step: 3,
+        description: `Both lists have cycles. Checking if they share the same cycle by traversing from one cycle start.`,
+        listA: [...scenario.listA],
+        listB: [...scenario.listB],
+        cycleA: scenario.cycleA,
+        cycleB: scenario.cycleB,
+        phase: 'checking_same_cycle',
+        caseType: scenario.caseType,
+        currentScenario,
+        result: ""
+      });
+      
+      steps.push({
+        step: 4,
+        description: `Same cycle detected! Both lists enter the same cycle. The intersection is at the cycle start.`,
+        listA: [...scenario.listA],
+        listB: [...scenario.listB],
+        cycleA: scenario.cycleA,
+        cycleB: scenario.cycleB,
+        phase: 'checking_same_cycle',
+        caseType: scenario.caseType,
+        currentScenario,
+        result: "Same cycle found"
+      });
+    } else if (scenario.caseType === 'different_cycles') {
+      steps.push({
+        step: 3,
+        description: `Both lists have cycles. Checking if they share the same cycle...`,
+        listA: [...scenario.listA],
+        listB: [...scenario.listB],
+        cycleA: scenario.cycleA,
+        cycleB: scenario.cycleB,
+        phase: 'checking_same_cycle',
+        caseType: scenario.caseType,
+        currentScenario,
+        result: ""
+      });
+      
+      steps.push({
+        step: 4,
+        description: `Different cycles detected! Lists have separate cycles that don't intersect. No intersection possible.`,
+        listA: [...scenario.listA],
+        listB: [...scenario.listB],
+        cycleA: scenario.cycleA,
+        cycleB: scenario.cycleB,
+        phase: 'checking_same_cycle',
+        caseType: scenario.caseType,
+        currentScenario,
+        result: "Different cycles"
+      });
+    } else if (scenario.caseType === 'mixed') {
+      steps.push({
+        step: 3,
+        description: `Mixed case: One list is cyclic, one is acyclic. They cannot intersect because acyclic list must end, but cyclic list is infinite.`,
+        listA: [...scenario.listA],
+        listB: [...scenario.listB],
+        cycleA: scenario.cycleA,
+        cycleB: scenario.cycleB,
+        phase: 'analyzing_cases',
+        caseType: scenario.caseType,
+        currentScenario,
+        result: "No intersection (mixed types)"
+      });
+    }
+
+    // Final result
+    steps.push({
+      step: steps.length,
+      description: `Final result: ${scenario.result}. Algorithm handles all possible cases correctly.`,
+      listA: [...scenario.listA],
+      listB: [...scenario.listB],
+      cycleA: scenario.cycleA,
+      cycleB: scenario.cycleB,
+      phase: 'complete',
+      caseType: scenario.caseType,
+      currentScenario,
+      result: scenario.result
+    });
+
+    return steps;
+  };
+
+  const [steps, setSteps] = useState(() => generateSteps());
+
+  // Regenerate steps when scenario changes
+  useEffect(() => {
+    setSteps(generateSteps());
+    setCurrentStep(0);
+  }, [currentScenario]);
+
+  const nextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const reset = () => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const changeScenario = (scenarioIndex: number) => {
+    setCurrentScenario(scenarioIndex);
+    setIsPlaying(false);
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isPlaying && currentStep < steps.length - 1) {
+      interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= steps.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 2500);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentStep, steps.length]);
+
+  const currentStepData = steps[currentStep];
+
+  if (!showVisualizer) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowVisualizer(true)}
+          className="px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 transition-all duration-200 shadow-lg transform hover:scale-105"
+        >
+          🔗 Visualize Cyclic Intersection Detection
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-6 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-xl border border-violet-200 dark:border-violet-700">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-violet-800 dark:text-violet-200">
+          Cyclic Intersection Detection Visualization
+        </h3>
+        <button
+          onClick={() => setShowVisualizer(false)}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Scenario Selector */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Select Scenario:</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {scenarios.map((scenario, index) => (
+            <button
+              key={index}
+              onClick={() => changeScenario(index)}
+              className={`p-2 text-sm rounded-lg transition-all duration-200 ${
+                currentScenario === index
+                  ? 'bg-violet-500 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              {scenario.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Algorithm Status */}
+      <div className="mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">Step:</span>
+            <span className="ml-2">{currentStep + 1}/{steps.length}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-green-600 dark:text-green-400">Phase:</span>
+            <span className="ml-2 capitalize">{currentStepData.phase.replace('_', ' ')}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Case Type:</span>
+            <span className="ml-2 capitalize">{currentStepData.caseType.replace('_', ' ')}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">Result:</span>
+            <span className="ml-2">{currentStepData.result || 'Processing...'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Linked Lists Visualization */}
+      <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        {/* List A */}
+        <div className="mb-4">
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">
+            List A {currentStepData.cycleA !== null ? `(Cycle at index ${currentStepData.cycleA})` : '(Acyclic)'}:
+          </h4>
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            {currentStepData.listA.map((node, index) => (
+              <React.Fragment key={node.id}>
+                <div
+                  className={`
+                    flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                    ${node.isCycleStart
+                      ? 'bg-red-300 border-red-600 text-red-900'
+                      : node.isIntersection
+                      ? 'bg-yellow-300 border-yellow-600 text-yellow-900'
+                      : 'bg-blue-200 dark:bg-blue-600 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-200'
+                    }
+                  `}
+                >
+                  {node.val}
+                  {node.isCycleStart && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-red-600 dark:text-red-400">
+                      CYCLE
+                    </div>
+                  )}
+                  {node.isIntersection && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                      SHARED
+                    </div>
+                  )}
+                </div>
+                {index < currentStepData.listA.length - 1 && (
+                  <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                )}
+                {/* Show cycle arrow for last node if it has a cycle */}
+                {index === currentStepData.listA.length - 1 && currentStepData.cycleA !== null && (
+                  <div className="flex items-center">
+                    <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 ml-2">back to {currentStepData.cycleA}</div>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* List B */}
+        <div>
+          <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">
+            List B {currentStepData.cycleB !== null ? `(Cycle at index ${currentStepData.cycleB})` : '(Acyclic)'}:
+          </h4>
+          <div className="flex items-center space-x-2 overflow-x-auto">
+            {currentStepData.listB.map((node, index) => (
+              <React.Fragment key={node.id}>
+                <div
+                  className={`
+                    flex items-center justify-center w-12 h-12 rounded-full border-2 font-bold text-lg transition-all duration-300 relative
+                    ${node.isCycleStart
+                      ? 'bg-red-300 border-red-600 text-red-900'
+                      : node.isIntersection
+                      ? 'bg-yellow-300 border-yellow-600 text-yellow-900'
+                      : 'bg-purple-200 dark:bg-purple-600 border-purple-400 dark:border-purple-500 text-purple-700 dark:text-purple-200'
+                    }
+                  `}
+                >
+                  {node.val}
+                  {node.isCycleStart && (
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-red-600 dark:text-red-400">
+                      CYCLE
+                    </div>
+                  )}
+                  {node.isIntersection && (
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                      SHARED
+                    </div>
+                  )}
+                </div>
+                {index < currentStepData.listB.length - 1 && (
+                  <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                )}
+                {/* Show cycle arrow for last node if it has a cycle */}
+                {index === currentStepData.listB.length - 1 && currentStepData.cycleB !== null && (
+                  <div className="flex items-center">
+                    <div className="text-2xl text-gray-400 dark:text-gray-500">→</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 ml-2">back to {currentStepData.cycleB}</div>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Step Description */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700">
+        <p className="text-indigo-800 dark:text-indigo-200 font-medium">
+          {currentStepData.description}
+        </p>
+      </div>
+
+      {/* Case Analysis */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-700">
+        <h4 className="font-bold text-green-800 dark:text-green-200 mb-2">Four Cases Analysis:</h4>
+        <div className="grid md:grid-cols-2 gap-4 text-sm text-green-700 dark:text-green-300">
+          <div className={`p-2 rounded ${currentStepData.caseType === 'both_acyclic' ? 'bg-green-200 dark:bg-green-800/50' : ''}`}>
+            <strong>1. Both Acyclic:</strong> Use standard intersection algorithm
+          </div>
+          <div className={`p-2 rounded ${currentStepData.caseType === 'same_cycle' ? 'bg-green-200 dark:bg-green-800/50' : ''}`}>
+            <strong>2. Same Cycle:</strong> Return cycle start as intersection
+          </div>
+          <div className={`p-2 rounded ${currentStepData.caseType === 'different_cycles' ? 'bg-green-200 dark:bg-green-800/50' : ''}`}>
+            <strong>3. Different Cycles:</strong> No intersection possible
+          </div>
+          <div className={`p-2 rounded ${currentStepData.caseType === 'mixed' ? 'bg-green-200 dark:bg-green-800/50' : ''}`}>
+            <strong>4. Mixed Types:</strong> No intersection possible
+          </div>
+        </div>
+      </div>
+
+      {/* Key Insight Box */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <h4 className="font-bold text-amber-800 dark:text-amber-200 mb-2">🔑 Key Insight:</h4>
+        <div className="text-amber-700 dark:text-amber-300 text-sm space-y-1">
+          <div><strong>Step 1:</strong> Detect cycles in both lists using Floyd's algorithm</div>
+          <div><strong>Step 2:</strong> Classify into one of four cases based on cycle presence</div>
+          <div><strong>Step 3:</strong> Apply appropriate intersection strategy for each case</div>
+          <div><strong>Critical insight:</strong> Mixed types (one cyclic, one acyclic) cannot intersect</div>
+          <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-800/50 rounded">
+            <strong>Why mixed types can't intersect:</strong> Acyclic list must terminate, but cyclic list is infinite. They can't share nodes.
+          </div>
+        </div>
+      </div>
+
+      {/* Algorithm Code with Highlighting */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Algorithm Steps:</h4>
+        <div className="font-mono text-xs text-gray-700 dark:text-gray-300 space-y-1">
+          <div className={currentStepData.phase === 'detecting_cycles' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            1. Detect cycles in both lists using Floyd's algorithm
+          </div>
+          <div className={currentStepData.phase === 'analyzing_cases' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            2. Classify case: both acyclic, same cycle, different cycles, or mixed
+          </div>
+          <div className={currentStepData.phase === 'standard_intersection' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3a. If both acyclic: use standard intersection algorithm
+          </div>
+          <div className={currentStepData.phase === 'checking_same_cycle' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            3b. If both cyclic: check if same cycle by traversing
+          </div>
+          <div className={currentStepData.phase === 'complete' ? 'bg-yellow-200 dark:bg-yellow-800/50 px-2 py-1 rounded' : ''}>
+            4. Return appropriate result based on case
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          ← Previous
+        </button>
+        
+        <button
+          onClick={togglePlay}
+          className={`px-4 py-2 rounded-lg text-white transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        
+        <button
+          onClick={nextStep}
+          disabled={currentStep === steps.length - 1}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
+          Next →
+        </button>
+        
+        <button
+          onClick={reset}
+          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200"
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Legend:</h4>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-300 border border-red-600 rounded"></div>
+            <span>Cycle Start</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-300 border border-yellow-600 rounded"></div>
+            <span>Intersection/Shared</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-blue-200 border border-blue-400 rounded"></div>
@@ -5486,6 +6559,18 @@ def multiplyListsGradeSchool(l1, l2):
               {currentQuestion.id === 19 && (
                 <div className="mb-6">
                   <ElegantIntersectionVisualizer />
+                </div>
+              )}
+              
+              {currentQuestion.id === 21 && (
+                <div className="mb-6">
+                  <CycleStartDetectionVisualizer />
+                </div>
+              )}
+              
+              {currentQuestion.id === 42 && (
+                <div className="mb-6">
+                  <CyclicIntersectionVisualizer />
                 </div>
               )}
 
