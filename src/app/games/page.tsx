@@ -1103,6 +1103,17 @@ def huffman_encoding(data):
       xp: 35,
       url: '/games/bit-wizardry',
       algorithm: 'bit-algorithms'
+    },
+    {
+      id: 'python-math-hub',
+      name: 'Python & Math Mastery Hub',
+      description: 'Master Python fundamentals and mathematical algorithms through comprehensive multiple-choice questions designed for technical interviews',
+      icon: '🐍',
+      difficulty: 'Medium',
+      type: 'python-math',
+      xp: 30,
+      url: '/games/python-math-hub',
+      algorithm: 'python-math-algorithms'
     }
   ];
   
@@ -2040,6 +2051,38 @@ def add_one(n):
                   className="inline-block px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all"
                 >
                   Play Bit Wizardry
+                </Link>
+              </div>
+            )}
+            
+            {selectedGame === 'python-math-hub' && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                  Python & Math Mastery Hub
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Master Python fundamentals and mathematical algorithms through comprehensive multiple-choice questions. 
+                  Perfect for technical interview preparation at top tech companies!
+                </p>
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                    <h3 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">🐍 Python Fundamentals</h3>
+                    <p className="text-sm text-purple-700 dark:text-purple-300">
+                      Lambda functions, collections, string processing, and functional programming patterns
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg">
+                    <h3 className="font-semibold text-indigo-800 dark:text-indigo-200 mb-2">🧮 Mathematical Algorithms</h3>
+                    <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                      Modulo operations, binary exponentiation, number theory, and algorithmic problem solving
+                    </p>
+                  </div>
+                </div>
+                <Link 
+                  href="/games/python-math-hub" 
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-lg shadow-md hover:from-purple-700 hover:to-indigo-700 transition-all"
+                >
+                  Start Learning
                 </Link>
               </div>
             )}
