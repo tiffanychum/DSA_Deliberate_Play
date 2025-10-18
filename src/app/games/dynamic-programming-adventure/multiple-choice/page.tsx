@@ -5887,7 +5887,12 @@ def reconstruction_tradeoff():
         prev2 = prev1
         prev1 = current
     
-    return prev1`,
+    return prev1
+    
+    # EXAMPLE
+    260 return 0 way, as 26 has 2 way, while 60 current set as 0 again and prev 1 = current = 0
+    210 retun 1 way, as 21 has 1 way, while 10 has 1 way current set as 1 and prev 1 = current = 1
+    `,
       options: [
         "if 10 <= two_digit <= 26:",
         "if two_digit <= 26:",

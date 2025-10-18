@@ -6,14 +6,64 @@ export default function PythonMathHubPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-indigo-900/20">
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-400 dark:to-indigo-400 bg-clip-text text-transparent mb-4">
-            🐍 Python & Math Mastery Hub
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Master Python fundamentals and mathematical algorithms through comprehensive multiple-choice questions. 
-            From lambda functions to binary exponentiation, build expertise for technical interviews at top tech companies.
-          </p>
+        {/* Back Button */}
+        <div className="mb-6">
+          <Link href="/games">
+            <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 border border-gray-200 dark:border-gray-700">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Games
+            </button>
+          </Link>
+        </div>
+
+        {/* Enhanced Header */}
+        <div className="text-center mb-12 relative">
+          {/* Decorative Background Elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-10 left-1/4 w-20 h-20 bg-purple-200 dark:bg-purple-800/30 rounded-full blur-xl opacity-60"></div>
+            <div className="absolute top-20 right-1/3 w-16 h-16 bg-indigo-200 dark:bg-indigo-800/30 rounded-full blur-xl opacity-60"></div>
+            <div className="absolute bottom-10 left-1/3 w-24 h-24 bg-blue-200 dark:bg-blue-800/30 rounded-full blur-xl opacity-60"></div>
+          </div>
+          
+          {/* Main Header Content */}
+          <div className="relative z-10">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-xl mb-6 transform hover:scale-110 transition-transform duration-300">
+              <span className="text-3xl">🐍</span>
+            </div>
+            
+            <h1 className="text-6xl font-bold mb-6">
+              <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 dark:from-purple-400 dark:via-indigo-400 dark:to-blue-400 bg-clip-text text-transparent">
+                Python & Math Mastery Hub
+              </span>
+            </h1>
+            
+            <div className="max-w-4xl mx-auto">
+              <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                Master Python fundamentals and mathematical algorithms through comprehensive multiple-choice questions.
+              </p>
+              <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
+                From lambda functions to binary exponentiation, build expertise for technical interviews at top tech companies.
+              </p>
+            </div>
+            
+            {/* Feature Highlights */}
+            <div className="flex flex-wrap justify-center gap-4 mt-8">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 rounded-full shadow-md backdrop-blur-sm">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Interactive Visualizations</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 rounded-full shadow-md backdrop-blur-sm">
+                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Step-by-Step Solutions</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 rounded-full shadow-md backdrop-blur-sm">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Interview Preparation</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
@@ -120,7 +170,7 @@ export default function PythonMathHubPage() {
                 
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">45</div>
+                    <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">50</div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">Total Questions</div>
                   </div>
                   <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
