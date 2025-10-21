@@ -65,6 +65,8 @@ const DPMultipleChoiceGame = () => {
   const [combo, setCombo] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [userProgress, setUserProgress] = useState<{[key: string]: number}>({});
+  const [showOriginalProblem, setShowOriginalProblem] = useState(false);
+  const [showManacherVisualization, setShowManacherVisualization] = useState(false);
 
   // Detect dark mode
   useEffect(() => {
@@ -5288,7 +5290,8 @@ def approximation_algorithms():
       functionName: "longest_palindromic_substring",
       difficulty: "Medium",
       question: "What's the missing line in the expand around center approach for longest palindromic substring?",
-      code: `def longestPalindrome(s):
+      code: `# Approach 1: Expand Around Center - O(n²) Time, O(1) Space
+def longestPalindrome_ExpandCenter(s):
     if not s:
         return ""
     
@@ -5300,7 +5303,7 @@ def approximation_algorithms():
             left -= 1
             right += 1
         # MISSING LINE HERE - what should we return?
-        # Length of palindrome
+        return right - left - 1  # Length of palindrome
     
     for i in range(len(s)):
         # Check for odd-length palindromes (center at i)
@@ -5315,7 +5318,57 @@ def approximation_algorithms():
             max_len = current_max
             start = i - (current_max - 1) // 2
     
-    return s[start:start + max_len]`,
+    return s[start:start + max_len]
+
+# Approach 2: Manacher's Algorithm - O(n) Time, O(n) Space
+def longestPalindrome_Manacher(s):
+    if not s:
+        return ""
+    
+    # Preprocess string: "abc" -> "^#a#b#c#$"
+    processed = '^#' + '#'.join(s) + '#$'
+    n = len(processed)
+    radius = [0] * n  # radius[i] = radius of palindrome centered at i
+    center = right = 0  # rightmost palindrome boundary
+    
+    max_len = 0
+    center_index = 0
+    
+    for i in range(1, n - 1):
+        # Mirror of i with respect to center
+        mirror = 2 * center - i
+        
+        # If i is within rightmost boundary, use previously computed radius of a smaller palindrome if any
+        if i < right:
+            radius[i] = min(right - i, radius[mirror])
+        
+        # Expand around center i
+        while processed[i + radius[i] + 1] == processed[i - radius[i] - 1]:
+            radius[i] += 1
+        
+        # Update rightmost boundary if palindrome centered at i extends past right
+        if i + radius[i] > right:
+            center, right = i, i + radius[i]
+        
+        # Track maximum palindrome
+        if radius[i] > max_len:
+            max_len = radius[i]
+            center_index = i
+    
+    # Extract original palindrome from processed string
+    start = (center_index - max_len) // 2
+    return s[start:start + max_len]
+
+# Why Manacher's is Better:
+# • Guaranteed O(n): No worst-case quadratic behavior
+# • Optimal: Theoretical lower bound for this problem  
+# • Practical: Good constants, works well in practice
+# • Scalable: Handles very long strings efficiently
+
+# Example: s = "babad"
+# Processed: "^#b#a#b#a#d#$"
+# Radius:    [0,0,1,0,3,0,1,0,1,0,1,0]
+# At index 4 ('a'): radius=3 means palindrome "bab" of length 3`,
       options: [
         "return right - left - 1",
         "return right - left + 1",
@@ -5327,7 +5380,7 @@ def approximation_algorithms():
       explanation: "We return right - left - 1 because when the loop exits, left and right are positioned just outside the valid palindrome. The actual palindrome spans from (left+1) to (right-1), so length = (right-1) - (left+1) + 1 = right - left - 1.",
       followUpQuestions: [
         {
-          question: "Why do we check both odd and even length palindromes?",
+          question: "Why do we check both odd and even length palindromes in the expand around center approach?",
           options: [
             "Palindromes can have different center structures",
             "Odd-length palindromes have a single center character",
@@ -5336,6 +5389,39 @@ def approximation_algorithms():
           ],
           correctAnswer: 3,
           explanation: "We check both because palindromes can have different structures: odd-length (like 'aba') has a single center character, while even-length (like 'abba') has its center between two characters."
+        },
+        {
+          question: "What is the key insight behind Manacher's algorithm achieving O(n) time complexity?",
+          options: [
+            "It uses dynamic programming to store results",
+            "It leverages symmetry properties of palindromes to avoid redundant work",
+            "It preprocesses the string to handle odd/even cases uniformly",
+            "Both B and C"
+          ],
+          correctAnswer: 3,
+          explanation: "Manacher's algorithm achieves O(n) by: 1) Preprocessing the string with separators to handle odd/even palindromes uniformly, and 2) Using the symmetry property of palindromes to avoid redundant expansions by leveraging previously computed information within the rightmost boundary."
+        },
+        {
+          question: "In Manacher's algorithm, what does the 'radius' array represent?",
+          options: [
+            "The length of each palindrome",
+            "The radius of the palindrome centered at each position in the processed string",
+            "The starting position of each palindrome",
+            "The number of characters to expand from center"
+          ],
+          correctAnswer: 1,
+          explanation: "The radius[i] represents the radius of the palindrome centered at position i in the processed string. For example, if radius[i] = 3, it means there's a palindrome of radius 3 centered at position i, spanning from i-3 to i+3 in the processed string."
+        },
+        {
+          question: "Why does Manacher's algorithm preprocess the string by adding separators?",
+          options: [
+            "To make all palindromes have odd length in the processed string",
+            "To avoid checking even-length palindromes separately",
+            "To simplify the algorithm logic",
+            "All of the above"
+          ],
+          correctAnswer: 3,
+          explanation: "Preprocessing with separators (e.g., 'abc' → '^#a#b#c#$') makes all palindromes odd-length in the processed string, eliminating the need to handle odd and even cases separately. This simplifies the algorithm significantly while maintaining correctness."
         }
       ]
     },
@@ -5355,7 +5441,7 @@ def approximation_algorithms():
     
     # Fill by increasing length
     for length in range(2, n):  # length of interval
-        for i in range(n - length):
+        for i in range(n - length): # at max len i will be in range(1) = [0]
             j = i + length
             # Try each k as last balloon to burst in (i,j)
             for k in range(i + 1, j):
@@ -5363,7 +5449,8 @@ def approximation_algorithms():
 
                 dp[i][j] = max(dp[i][j], 
                              dp[i][k] + dp[k][j] + coins)
-    
+
+    #return result after max len
     return dp[0][n - 1]`,
       options: [
         "coins = nums[i] * nums[k] * nums[j]",
@@ -5454,7 +5541,7 @@ def approximation_algorithms():
     
     # Fill by increasing length
     for length in range(2, n + 1):
-        for i in range(n - length + 1):
+        for i in range(n - length + 1): # at max len i will be in range(1) = [0]
             j = i + length - 1
             
             # Current player picks left or right optimally
@@ -5465,7 +5552,20 @@ def approximation_algorithms():
             dp[i][j] = max(pick_left, pick_right)
     
     # Alice wins if she has positive advantage
-    return dp[0][n - 1] > 0`,
+    return dp[0][n - 1] > 0
+    
+  # Space optimized O(n)
+  def stoneGame(piles):
+    n = len(piles)
+    dp = piles[:]  # dp[i] = max advantage in range [i, i+length-1]
+    
+    for length in range(2, n + 1):
+        for i in range(n - length + 1):
+            j = i + length - 1
+            dp[i] = max(piles[i] - dp[i + 1], piles[j] - dp[i])
+    
+    return dp[0] > 0
+    `,
       options: [
         "pick_right = piles[j] - dp[i][j - 1]",
         "pick_right = piles[j] + dp[i][j - 1]",
@@ -5500,57 +5600,67 @@ def approximation_algorithms():
     if n <= 1:
         return 0
     
-    # First, precompute palindrome information
-    is_palindrome = [[False] * n for _ in range(n)]
+    dp = list(range(n))  # Worst case initialization
     
-    # Every single character is a palindrome
-    for i in range(n):
-        is_palindrome[i][i] = True
-    
-    # Check for palindromes of length 2
-    for i in range(n - 1):
-        if s[i] == s[i + 1]:
-            is_palindrome[i][i + 1] = True
-    
-    # Check for palindromes of length 3 and more
-    for length in range(3, n + 1):
-        for i in range(n - length + 1):
-            j = i + length - 1
-            # MISSING LINE HERE - condition for palindrome?
-            if s[i] == s[j] and is_palindrome[i + 1][j - 1]:
-                is_palindrome[i][j] = True
-    
-    # DP for minimum cuts
-    dp = [float('inf')] * n
-    for i in range(n):
-        if is_palindrome[0][i]:
-            dp[i] = 0
-        else:
-            for j in range(i):
-                if is_palindrome[j + 1][i]:
-                    dp[i] = min(dp[i], dp[j] + 1)
+    for center in range(n):
+        # Check odd-length palindromes
+        left = right = center
+        while left >= 0 and right < n and s[left] == s[right]:
+            # MISSING LINE HERE - how to update dp for palindrome?
+            dp[right] = min(dp[right], 0 if left == 0 else dp[left - 1] + 1)
+            left -= 1
+            right += 1
+        
+        # Check even-length palindromes
+        left, right = center, center + 1
+        while left >= 0 and right < n and s[left] == s[right]:
+            dp[right] = min(dp[right], 0 if left == 0 else dp[left - 1] + 1)
+            left -= 1
+            right += 1
     
     return dp[n - 1]`,
       options: [
-        "if s[i] == s[j] and is_palindrome[i + 1][j - 1]:",
-        "if s[i] == s[j]:",
-        "if is_palindrome[i + 1][j - 1]:",
-        "if s[i] == s[j] or is_palindrome[i + 1][j - 1]:"
+        "dp[right] = min(dp[right], 0 if left == 0 else dp[left - 1] + 1)",
+        "dp[right] = dp[left - 1] + 1",
+        "dp[right] = min(dp[right], dp[left] + 1)",
+        "dp[right] = 0 if left == 0 else dp[left - 1] + 1"
       ],
       correctAnswer: 0,
-      hint: "For a string to be a palindrome, what two conditions must be met?",
-      explanation: "if s[i] == s[j] and is_palindrome[i + 1][j - 1]: A substring s[i:j+1] is a palindrome if the first and last characters match AND the substring between them is also a palindrome.",
+      hint: "When we find a palindrome from left to right, how do we calculate the minimum cuts needed?",
+      explanation: "dp[right] = min(dp[right], 0 if left == 0 else dp[left - 1] + 1): When we find a palindrome from left to right, we update dp[right] with the minimum of its current value and the optimal solution. If the palindrome starts from index 0 (left == 0), no cuts are needed (0). Otherwise, we need dp[left - 1] + 1 cuts (optimal cuts for substring before the palindrome plus one cut to separate).",
       followUpQuestions: [
         {
-          question: "Why do we precompute palindrome information instead of checking on the fly?",
+          question: "Why is the center expansion approach more efficient than the interval DP approach?",
           options: [
-            "To avoid redundant palindrome checks",
-            "To improve time complexity from O(n³) to O(n²)",
-            "To separate concerns: palindrome detection vs. minimum cuts",
+            "It combines palindrome detection with DP updates in one pass",
+            "It avoids creating a 2D palindrome table",
+            "It reduces time complexity from O(n³) to O(n²)",
             "All of the above"
           ],
           correctAnswer: 3,
-          explanation: "Precomputing palindrome information avoids redundant checks, improves time complexity by reusing results, and separates the palindrome detection logic from the minimum cut calculation."
+          explanation: "The center expansion approach is more efficient because it combines palindrome detection with DP updates in a single pass, eliminates the need for a 2D palindrome table (saving O(n²) space), and reduces overall time complexity from O(n³) to O(n²)."
+        },
+        {
+          question: "What does dp[i] represent in this optimized solution?",
+          options: [
+            "The minimum cuts needed for substring s[0...i]",
+            "Whether s[0...i] is a palindrome",
+            "The length of the longest palindrome ending at i",
+            "The number of palindromes in s[0...i]"
+          ],
+          correctAnswer: 0,
+          explanation: "dp[i] represents the minimum number of cuts needed to partition the substring s[0...i] into palindromes. It's initialized to the worst case (i cuts) and updated whenever we find palindromes that allow fewer cuts."
+        },
+        {
+          question: "Why do we check both odd-length and even-length palindromes separately?",
+          options: [
+            "Odd palindromes have a single center character, even palindromes have two center characters",
+            "They require different expansion starting points",
+            "We need to cover all possible palindrome patterns in the string",
+            "All of the above"
+          ],
+          correctAnswer: 3,
+          explanation: "We check both odd and even-length palindromes because they have different center patterns: odd palindromes expand from a single character (center, center), while even palindromes expand from between two characters (center, center+1). This ensures we find all possible palindromes in the string."
         }
       ]
     },
@@ -5966,7 +6076,8 @@ def reconstruction_tradeoff():
       functionName: "longest_increasing_subsequence",
       difficulty: "Medium",
       question: "What's the missing line in the LIS DP solution?",
-      code: `def lengthOfLIS(nums):
+      code: `# Approach 1: Dynamic Programming - O(n²) Time, O(n) Space
+def lengthOfLIS_DP(nums):
     if not nums:
         return 0
     
@@ -5980,7 +6091,60 @@ def reconstruction_tradeoff():
             if nums[j] < nums[i]:
                 dp[i] = max(dp[i], dp[j] + 1)
     
-    return max(dp)`,
+    return max(dp)
+
+# Approach 2: Binary Search + Tails Array - O(n log n) Time, O(n) Space
+def lengthOfLIS_BinarySearch(nums):
+    if not nums:
+        return 0
+    
+    tails = []  # tails[i] = smallest tail of all LIS of length i+1
+    
+    for num in nums:
+        # Binary search for the position to insert/replace
+        left, right = 0, len(tails)
+        
+        while left < right:
+            mid = (left + right) // 2
+            if tails[mid] < num:
+                left = mid + 1
+            else:
+                right = mid
+        
+        # If left == len(tails), we're extending the LIS
+        if left == len(tails):
+            tails.append(num)
+        else:
+            # Replace with smaller ending element
+            tails[left] = num
+    
+    return len(tails)
+
+# Alternative using Python's bisect module
+import bisect
+
+def lengthOfLIS_Bisect(nums):
+    tails = []
+    
+    for num in nums:
+        pos = bisect.bisect_left(tails, num)
+        if pos == len(tails):
+            tails.append(num)
+        else:
+            tails[pos] = num
+    
+    return len(tails)
+
+# Example walkthrough for [2,1,4,3,5]:
+# Step 1: num=2, tails=[] -> tails=[2]
+# Step 2: num=1, tails=[2] -> tails=[1] (replace 2 with smaller 1)
+# Step 3: num=4, tails=[1] -> tails=[1,4] (extend)
+# Step 4: num=3, tails=[1,4] -> tails=[1,3] (replace 4 with smaller 3)
+# Step 5: num=5, tails=[1,3] -> tails=[1,3,5] (extend)
+# Result: len(tails) = 3
+
+# Key Insight: tails[i] = smallest ending element of all LIS of length i+1
+# This maximizes opportunities to extend subsequences`,
       options: [
         "if nums[j] < nums[i]:",
         "if nums[j] <= nums[i]:",
@@ -5999,10 +6163,32 @@ def reconstruction_tradeoff():
             "The problem typically asks for strictly increasing LIS",
             "All of the above"
           ],
-          correctAnswer: 3,
-          explanation: "We use strict inequality because: the problem asks for strictly increasing subsequences, equal elements don't contribute to 'increasing' nature, and including equal elements wouldn't make a meaningful longest increasing subsequence."
-        }
-      ]
+            correctAnswer: 3,
+            explanation: "We use strict inequality because: the problem asks for strictly increasing subsequences, equal elements don't contribute to 'increasing' nature, and including equal elements wouldn't make a meaningful longest increasing subsequence."
+          },
+          {
+            question: "What's the key insight behind the O(n log n) binary search approach?",
+            options: [
+              "Use a tails array where tails[i] = smallest ending element of all LIS of length i+1",
+              "Sort the input array first, then find LIS",
+              "Use a segment tree to track maximum lengths",
+              "Apply divide and conquer with binary search"
+            ],
+            correctAnswer: 0,
+            explanation: "The key insight is maintaining a tails array where tails[i] stores the smallest ending element of all increasing subsequences of length i+1. This allows us to keep endings as small as possible, maximizing opportunities to extend subsequences, and enables binary search for O(log n) position finding."
+          },
+          {
+            question: "In the binary search LIS algorithm, what does the tails array represent after processing [2,1,4,3,5]?",
+            options: [
+              "tails = [1,3,5] - the actual longest increasing subsequence",
+              "tails = [1,3,5] - smallest endings for LIS of lengths 1,2,3 respectively",
+              "tails = [2,4,5] - the original LIS before optimization",
+              "tails = [1,2,3,4,5] - all elements in sorted order"
+            ],
+            correctAnswer: 1,
+            explanation: "After processing [2,1,4,3,5], tails = [1,3,5] means: best ending for LIS length 1 is 1, best ending for LIS length 2 is 3, and best ending for LIS length 3 is 5. Note that tails itself is NOT the actual LIS - it just tracks the smallest possible endings for each length, enabling optimal future extensions."
+          }
+        ]
     },
     // Conceptual Questions - Linear DP
     {
@@ -6467,6 +6653,257 @@ def sliding_window_optimization():
 
   const currentQuestionData = getCurrentQuestionData();
 
+  // Manacher's Algorithm Visualization Component
+  const ManacherVisualization = () => {
+    const [currentStep, setCurrentStep] = useState(0);
+    const testString = "babad";
+    
+    // Generate steps for Manacher's algorithm
+    const generateSteps = () => {
+      const s = testString;
+      const processed = '^#' + s.split('').join('#') + '#$';
+      const n = processed.length;
+      const radius = new Array(n).fill(0);
+      let center = 0, right = 0;
+      let maxLen = 0, centerIndex = 0;
+      
+      const steps = [];
+      
+      // Initial step
+      steps.push({
+        step: 0,
+        description: `Initialize: Transform "${s}" → "${processed}"`,
+        processed,
+        radius: [...radius],
+        center,
+        right,
+        currentI: -1,
+        maxLen,
+        centerIndex,
+        result: ""
+      });
+      
+      for (let i = 1; i < n - 1; i++) {
+        const mirror = 2 * center - i;
+        
+        // Step: Check if i is within right boundary
+        if (i < right) {
+          radius[i] = Math.min(right - i, radius[mirror]);
+          steps.push({
+            step: steps.length,
+            description: `i=${i} is within boundary. Use mirror: radius[${i}] = min(${right - i}, ${radius[mirror]}) = ${radius[i]}`,
+            processed,
+            radius: [...radius],
+            center,
+            right,
+            currentI: i,
+            maxLen,
+            centerIndex,
+            result: ""
+          });
+        }
+        
+        // Step: Expand around center
+        let expandCount = 0;
+        while (processed[i + radius[i] + 1] === processed[i - radius[i] - 1]) {
+          radius[i]++;
+          expandCount++;
+        }
+        
+        if (expandCount > 0) {
+          steps.push({
+            step: steps.length,
+            description: `Expand around i=${i}: radius[${i}] = ${radius[i]} (expanded ${expandCount} times)`,
+            processed,
+            radius: [...radius],
+            center,
+            right,
+            currentI: i,
+            maxLen,
+            centerIndex,
+            result: ""
+          });
+        }
+        
+        // Step: Update rightmost boundary
+        if (i + radius[i] > right) {
+          center = i;
+          right = i + radius[i];
+          steps.push({
+            step: steps.length,
+            description: `Update boundary: center=${center}, right=${right}`,
+            processed,
+            radius: [...radius],
+            center,
+            right,
+            currentI: i,
+            maxLen,
+            centerIndex,
+            result: ""
+          });
+        }
+        
+        // Step: Track maximum
+        if (radius[i] > maxLen) {
+          maxLen = radius[i];
+          centerIndex = i;
+          const start = (centerIndex - maxLen) / 2;
+          const result = s.substring(start, start + maxLen);
+          steps.push({
+            step: steps.length,
+            description: `New maximum found: radius[${i}] = ${radius[i]}, palindrome = "${result}"`,
+            processed,
+            radius: [...radius],
+            center,
+            right,
+            currentI: i,
+            maxLen,
+            centerIndex,
+            result
+          });
+        }
+      }
+      
+      // Final step
+      const start = (centerIndex - maxLen) / 2;
+      const finalResult = s.substring(start, start + maxLen);
+      steps.push({
+        step: steps.length,
+        description: `Final result: "${finalResult}" (length ${maxLen})`,
+        processed,
+        radius,
+        center,
+        right,
+        currentI: -1,
+        maxLen,
+        centerIndex,
+        result: finalResult
+      });
+      
+      return steps;
+    };
+    
+    const steps = generateSteps();
+    const step = steps[currentStep] || steps[0];
+    
+    const nextStep = () => {
+      if (currentStep < steps.length - 1) {
+        setCurrentStep(currentStep + 1);
+      }
+    };
+    
+    const prevStep = () => {
+      if (currentStep > 0) {
+        setCurrentStep(currentStep - 1);
+      }
+    };
+    
+    const reset = () => {
+      setCurrentStep(0);
+    };
+    
+    return (
+      <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+        <div className="mb-4">
+          <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+            🔍 Manacher's Algorithm Visualization
+          </h4>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Step {currentStep + 1} of {steps.length}: {step.description}
+          </p>
+        </div>
+        
+        {/* Processed String Display */}
+        <div className="mb-4">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Processed String:</div>
+          <div className="font-mono text-sm bg-slate-100 dark:bg-slate-800 p-2 rounded flex space-x-1">
+            {step.processed.split('').map((char, idx) => (
+              <span
+                key={idx}
+                className={`px-1 rounded ${
+                  idx === step.currentI
+                    ? 'bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100'
+                    : idx >= step.center - step.radius[step.center] && idx <= step.center + step.radius[step.center] && step.center > 0
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {char}
+              </span>
+            ))}
+          </div>
+        </div>
+        
+        {/* Radius Array Display */}
+        <div className="mb-4">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Radius Array:</div>
+          <div className="font-mono text-sm bg-slate-100 dark:bg-slate-800 p-2 rounded flex space-x-1">
+            {step.radius.map((r, idx) => (
+              <span
+                key={idx}
+                className={`px-1 rounded min-w-[20px] text-center ${
+                  idx === step.currentI
+                    ? 'bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100'
+                    : idx === step.centerIndex && step.maxLen > 0
+                    ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-900 dark:text-yellow-100'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {r}
+              </span>
+            ))}
+          </div>
+        </div>
+        
+        {/* Current State */}
+        <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-slate-500 dark:text-slate-400">Center:</span>
+            <span className="ml-2 font-mono text-slate-900 dark:text-slate-100">{step.center}</span>
+          </div>
+          <div>
+            <span className="text-slate-500 dark:text-slate-400">Right:</span>
+            <span className="ml-2 font-mono text-slate-900 dark:text-slate-100">{step.right}</span>
+          </div>
+          <div>
+            <span className="text-slate-500 dark:text-slate-400">Max Length:</span>
+            <span className="ml-2 font-mono text-slate-900 dark:text-slate-100">{step.maxLen}</span>
+          </div>
+          <div>
+            <span className="text-slate-500 dark:text-slate-400">Result:</span>
+            <span className="ml-2 font-mono font-semibold text-green-700 dark:text-green-300">
+              {step.result || "Processing..."}
+            </span>
+          </div>
+        </div>
+        
+        {/* Controls */}
+        <div className="flex justify-center space-x-3">
+          <button
+            onClick={prevStep}
+            disabled={currentStep === 0}
+            className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-sm hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Prev
+          </button>
+          <button
+            onClick={reset}
+            className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-sm hover:bg-slate-300 dark:hover:bg-slate-600"
+          >
+            Reset
+          </button>
+          <button
+            onClick={nextStep}
+            disabled={currentStep === steps.length - 1}
+            className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-sm hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (!gameStarted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-100 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950">
@@ -6732,8 +7169,8 @@ def sliding_window_optimization():
       </header>
 
       {/* Main Game */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Question Panel */}
           <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/30">
             <div className="p-6 border-b border-gray-200/50 dark:border-gray-700/50">
@@ -6779,6 +7216,298 @@ def sliding_window_optimization():
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 {currentQuestionData?.question}
               </p>
+
+              {/* Manacher's Algorithm Visualization Button */}
+              {currentQuestion?.id === 97 && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowManacherVisualization(!showManacherVisualization)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                  >
+                    <span className="text-lg">🔍</span>
+                    {showManacherVisualization ? 'Hide' : 'Visualize'} Manacher's Algorithm
+                  </button>
+                  
+                  {showManacherVisualization && <ManacherVisualization />}
+                </div>
+              )}
+
+              {/* Original Problem Expandable Section for Palindrome Partitioning */}
+              {currentQuestion?.id === 101 && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowOriginalProblem(!showOriginalProblem)}
+                    className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${showOriginalProblem ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {showOriginalProblem ? 'Hide' : 'Show'} Original Palindrome Partitioning Problem
+                  </button>
+                  
+                  {showOriginalProblem && (
+                    <div className="mt-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 rounded-lg">
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100 mb-2">
+                            LeetCode 132: Palindrome Partitioning II
+                          </h4>
+                          <p className="text-sm text-emerald-800 dark:text-emerald-200 mb-3">
+                            Given a string <code>s</code>, partition <code>s</code> such that every substring of the partition is a palindrome. Return the <strong>minimum cuts needed</strong> for a palindrome partitioning of <code>s</code>.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-emerald-900 dark:text-emerald-100 mb-2">Examples:</h5>
+                          <div className="space-y-3">
+                            <div className="bg-emerald-100 dark:bg-emerald-800 p-3 rounded text-sm">
+                              <div className="font-mono text-emerald-900 dark:text-emerald-100 mb-2">
+                                <strong>Example 1:</strong>
+                                <br />Input: s = "aab"
+                                <br />Output: 1
+                              </div>
+                              <div className="text-emerald-700 dark:text-emerald-300">
+                                Explanation: The palindrome partitioning ["aa","b"] could be produced using 1 cut.
+                              </div>
+                            </div>
+                            
+                            <div className="bg-emerald-100 dark:bg-emerald-800 p-3 rounded text-sm">
+                              <div className="font-mono text-emerald-900 dark:text-emerald-100 mb-2">
+                                <strong>Example 2:</strong>
+                                <br />Input: s = "aba"
+                                <br />Output: 0
+                              </div>
+                              <div className="text-emerald-700 dark:text-emerald-300">
+                                Explanation: "aba" is already a palindrome, so no cuts are needed.
+                              </div>
+                            </div>
+
+                            <div className="bg-emerald-100 dark:bg-emerald-800 p-3 rounded text-sm">
+                              <div className="font-mono text-emerald-900 dark:text-emerald-100 mb-2">
+                                <strong>Example 3:</strong>
+                                <br />Input: s = "abcba"
+                                <br />Output: 0
+                              </div>
+                              <div className="text-emerald-700 dark:text-emerald-300">
+                                Explanation: "abcba" is already a palindrome, so no cuts are needed.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-emerald-900 dark:text-emerald-100 mb-2">Constraints:</h5>
+                          <ul className="text-sm text-emerald-800 dark:text-emerald-200 space-y-1 list-disc list-inside">
+                            <li><code>1 ≤ s.length ≤ 2000</code></li>
+                            <li><code>s</code> consists of lowercase English letters only</li>
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-emerald-900 dark:text-emerald-100 mb-2">Key Insights:</h5>
+                          <ul className="text-sm text-emerald-800 dark:text-emerald-200 space-y-1 list-disc list-inside">
+                            <li><strong>Palindrome Detection:</strong> Need efficient way to check if substring is palindrome</li>
+                            <li><strong>Minimum Cuts:</strong> Find optimal way to partition string with fewest cuts</li>
+                            <li><strong>Dynamic Programming:</strong> Build solution incrementally from smaller subproblems</li>
+                            <li><strong>Center Expansion:</strong> Expand around centers to find all palindromes efficiently</li>
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-emerald-900 dark:text-emerald-100 mb-2">Approach Comparison:</h5>
+                          <div className="space-y-2">
+                            <div className="bg-emerald-100 dark:bg-emerald-800 p-2 rounded text-sm">
+                              <div className="font-semibold text-emerald-900 dark:text-emerald-100">1. Interval DP (O(n³)):</div>
+                              <div className="text-emerald-700 dark:text-emerald-300">Precompute palindrome table, then use DP for minimum cuts</div>
+                            </div>
+                            <div className="bg-emerald-100 dark:bg-emerald-800 p-2 rounded text-sm">
+                              <div className="font-semibold text-emerald-900 dark:text-emerald-100">2. Center Expansion (O(n²)):</div>
+                              <div className="text-emerald-700 dark:text-emerald-300">Expand around centers while updating DP array - more efficient!</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-emerald-900 dark:text-emerald-100 mb-2">DP State Definition:</h5>
+                          <div className="bg-emerald-100 dark:bg-emerald-800 p-2 rounded text-sm">
+                            <div className="font-mono text-emerald-900 dark:text-emerald-100">
+                              dp[i] = minimum number of cuts needed for substring s[0...i]
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-emerald-200 dark:border-emerald-700 pt-3">
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                            💡 The optimized solution uses <strong>center expansion</strong> to find palindromes while simultaneously updating the DP array, achieving O(n²) time complexity instead of O(n³).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Original Problem Expandable Section for Matrix Chain Multiplication */}
+              {currentQuestion?.id === 99 && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowOriginalProblem(!showOriginalProblem)}
+                    className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${showOriginalProblem ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {showOriginalProblem ? 'Hide' : 'Show'} Original Matrix Chain Problem
+                  </button>
+                  
+                  {showOriginalProblem && (
+                    <div className="mt-3 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/30 rounded-lg">
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-2">
+                            Matrix Chain Multiplication Problem
+                          </h4>
+                          <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
+                            Given a sequence of matrices, find the most efficient way to multiply these matrices together. The problem is not actually to perform the multiplications, but merely to decide in which order to perform the multiplications.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2">Problem Statement:</h5>
+                          <p className="text-sm text-purple-800 dark:text-purple-200">
+                            Given an array <code className="bg-purple-100 dark:bg-purple-800 px-1 rounded">p[]</code> which represents the chain of matrices such that the <code>i</code>th matrix <code>A[i]</code> has dimensions <code>p[i-1] x p[i]</code>. Find the minimum number of scalar multiplications needed to compute the matrix chain product.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2">Example:</h5>
+                          <div className="bg-purple-100 dark:bg-purple-800 p-3 rounded text-sm">
+                            <div className="font-mono text-purple-900 dark:text-purple-100 mb-2">
+                              Input: p = [1, 2, 3, 4]
+                            </div>
+                            <div className="text-purple-700 dark:text-purple-300 mb-2">
+                              This represents 3 matrices:
+                              <br />• A1: 1×2 matrix
+                              <br />• A2: 2×3 matrix  
+                              <br />• A3: 3×4 matrix
+                            </div>
+                            <div className="text-purple-700 dark:text-purple-300">
+                              <strong>Different parenthesizations:</strong>
+                              <br />• ((A1×A2)×A3): (1×2×3) + (1×3×4) = 6 + 12 = 18 operations
+                              <br />• (A1×(A2×A3)): (2×3×4) + (1×2×4) = 24 + 8 = 32 operations
+                              <br />• <strong>Minimum: 18 operations</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2">Key Insights:</h5>
+                          <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-1 list-disc list-inside">
+                            <li><strong>Matrix Multiplication Cost:</strong> Multiplying an m×n matrix by an n×p matrix takes m×n×p scalar operations</li>
+                            <li><strong>Associative Property:</strong> Matrix multiplication is associative, so we can parenthesize in any way</li>
+                            <li><strong>Optimal Substructure:</strong> Optimal solution contains optimal solutions to subproblems</li>
+                            <li><strong>Overlapping Subproblems:</strong> Same subproblems appear multiple times</li>
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2">DP State Definition:</h5>
+                          <div className="bg-purple-100 dark:bg-purple-800 p-2 rounded text-sm">
+                            <div className="font-mono text-purple-900 dark:text-purple-100">
+                              dp[i][j] = minimum number of scalar multiplications needed to compute the matrix chain A[i]...A[j]
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-purple-900 dark:text-purple-100 mb-2">Recurrence Relation:</h5>
+                          <div className="bg-purple-100 dark:bg-purple-800 p-2 rounded text-sm">
+                            <div className="font-mono text-purple-900 dark:text-purple-100 space-y-1">
+                              <div>dp[i][j] = min(dp[i][k] + dp[k+1][j] + p[i-1]×p[k]×p[j])</div>
+                              <div className="text-xs text-purple-700 dark:text-purple-300">for all k where i ≤ k &lt; j</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-purple-200 dark:border-purple-700 pt-3">
+                          <p className="text-xs text-purple-600 dark:text-purple-400">
+                            💡 This is a classic <strong>Interval DP</strong> problem where we build solutions for increasing interval lengths, trying all possible split points within each interval.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Original Problem Expandable Section for LIS DP Question */}
+              {currentQuestion?.id === 110 && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowOriginalProblem(!showOriginalProblem)}
+                    className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${showOriginalProblem ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {showOriginalProblem ? 'Hide' : 'Show'} Original LeetCode Problem
+                  </button>
+                  
+                  {showOriginalProblem && (
+                    <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                            LeetCode 300: Longest Increasing Subsequence
+                          </h4>
+                          <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                            Given an integer array <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">nums</code>, return the length of the longest <strong>strictly increasing subsequence</strong>.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Definition:</h5>
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            A <strong>subsequence</strong> is a sequence that can be derived from an array by deleting some or no elements without changing the order of the remaining elements.
+                          </p>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Examples:</h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="bg-blue-100 dark:bg-blue-800 p-2 rounded">
+                              <div className="font-mono text-blue-900 dark:text-blue-100">Input: nums = [10,9,2,5,3,7,101,18]</div>
+                              <div className="font-mono text-blue-900 dark:text-blue-100">Output: 4</div>
+                              <div className="text-blue-700 dark:text-blue-300">Explanation: LIS is [2,3,7,101]</div>
+                            </div>
+                            <div className="bg-blue-100 dark:bg-blue-800 p-2 rounded">
+                              <div className="font-mono text-blue-900 dark:text-blue-100">Input: nums = [0,1,0,3,2,3]</div>
+                              <div className="font-mono text-blue-900 dark:text-blue-100">Output: 4</div>
+                              <div className="text-blue-700 dark:text-blue-300">Explanation: LIS is [0,1,2,3]</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Key Points:</h5>
+                          <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                            <li><strong>Strictly Increasing:</strong> Each element must be smaller than the next</li>
+                            <li><strong>Subsequence:</strong> Elements don't need to be contiguous, but must maintain original order</li>
+                            <li><strong>Return Length:</strong> We only need the length, not the actual subsequence</li>
+                            <li><strong>Time Complexity:</strong> This DP solution is O(n²), but O(n log n) is possible with binary search</li>
+                          </ul>
+                        </div>
+
+                        <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            💡 The algorithm shown uses <strong>Dynamic Programming</strong> where dp[i] represents the length of the longest increasing subsequence ending at index i.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               
               {showHint && !isAnswered && (
                 <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg">
@@ -6913,22 +7642,11 @@ def sliding_window_optimization():
             <div className="p-4 border-b border-gray-200/50 dark:border-gray-700/50">
               <h3 className="font-semibold text-gray-900 dark:text-white">Code Reference</h3>
             </div>
-            <div className="p-1">
+            <div className="flex-1 bg-gray-50 dark:bg-gray-900 flex flex-col max-h-216">
               {currentQuestion?.code && (
-                <SyntaxHighlighter
-                  language="python"
-                  style={isDarkMode ? vscDarkPlus : vs}
-                  customStyle={{
-                    background: isDarkMode ? 'rgb(30, 41, 59)' : 'rgb(243, 244, 246)',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.5rem',
-                    margin: 0
-                  }}
-                  showLineNumbers={true}
-                >
-                  {currentQuestion.code}
-                </SyntaxHighlighter>
+                <pre className="bg-gray-800 dark:bg-gray-950 text-green-400 p-4 overflow-x-auto text-sm flex-1 overflow-y-auto min-h-0 m-0 rounded-none max-h-216">
+                  <code>{currentQuestion.code}</code>
+                </pre>
               )}
             </div>
           </div>
